@@ -1,0 +1,18 @@
+entrypoint = "main.py"
+modules = ["python-3.11"]
+
+run = "modal token set --token-id ak-YdlM7DKqMxskOj6ETs6s4P --token-secret as-jtmku0SFjPXQXeFc9zJRcq & modal serve src.app"
+onBoot = "modal token set --token-id ak-YdlM7DKqMxskOj6ETs6s4P --token-secret as-jtmku0SFjPXQXeFc9zJRcq"
+
+[nix]
+channel = "stable-24_05"
+
+[unitTest]
+language = "python3"
+
+[gitHubImport]
+requiredFiles = [".replit", "replit.nix"]
+
+[deployment]
+run = ["python3", "main.py"]
+deploymentTarget = "cloudrun"
