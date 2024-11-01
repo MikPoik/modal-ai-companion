@@ -19,11 +19,14 @@ async def main():
             }
 
             data = {
-                "prompt": prompt
+                "prompt": prompt,
+                "workspace_id": "default95",
+                "context_id": "default",
+                "agent_id": "default",
             }
 
             try:
-                async with client.stream('POST', API_URL, headers=headers, json=data, timeout=60) as response:
+                async with client.stream('POST', API_URL, headers=headers, json=data, timeout=90) as response:
                     async for line in response.aiter_lines():
                         if line:
                             print(line)
