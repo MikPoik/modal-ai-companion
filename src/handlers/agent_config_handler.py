@@ -37,11 +37,11 @@ class AgentConfigHandler:
                 
         # Create embedding index if background text exists and is long enough
         if (agent_config.character and 
-            agent_config.character.background and 
-            len(agent_config.character.background) > 1000):
+            agent_config.character.backstory and 
+            len(agent_config.character.backstory) > 1000):
             print("Creating embedding index for background text")
             success = self.index_handler.create_and_save_index(
-                agent_config.character.background,
+                agent_config.character.backstory,
                 agent_config,
                 update_config
             )

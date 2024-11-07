@@ -17,24 +17,24 @@ class ChatHandler:
         relevant_backstory = None
         # Get relevant background if available
         if (agent_config.character and 
-            agent_config.character.background and 
-            len(agent_config.character.background) > 1000):
+            agent_config.character.backstory and 
+            len(agent_config.character.backstory) > 1000):
 
             similar_chunks = self.index_handler.search(prompt, agent_config)
             if similar_chunks:
                 relevant_backstory = "\n".join(similar_chunks)
-                print("\nRelevant backstory: "+relevant_backstory)
+                #print("\nRelevant backstory: "+relevant_backstory)
                 
         # Get the formatted system prompt
         system_prompt = self._format_system_prompt(agent_config,updated_backstory=relevant_backstory)
-        
-        messages.append({"role": "system", "content": system_prompt})
+        #print(f"System prompt fromatted: {system_prompt}")
+        messages.append({"tag":"initial_system_prompt","role": "system", "content": system_prompt})
         # Get chat history (excluding system messages)
         history = self.get_chat_history(agent_config)  # This returns List[Dict]
         messages.extend([msg for msg in history if msg.get('role') != 'system'])
 
         # Add the user's prompt
-        messages.append({"role": "user", "content": prompt})
+        messages.append({"tag":"text","role": "user", "content": prompt})
         # Filter messages to fit context window
         return self.filter_messages_for_context(
             messages, 
@@ -49,7 +49,7 @@ class ChatHandler:
                 char_description=agent_config.character.description,
                 char_appearance=agent_config.character.appearance,
                 char_personality=agent_config.character.personality,
-                char_background=updated_backstory or agent_config.character.background,
+                char_backstory=updated_backstory or agent_config.character.backstory,
                 tags=agent_config.character.tags,
                 char_seed=agent_config.character.seed_message
             )
@@ -57,11 +57,17 @@ class ChatHandler:
             print(f"Error formatting system prompt: {str(e)}")
             return agent_config.llm_config.system_prompt
 
-    def get_chat_history(self, agent_config: AgentConfig) -> List[Dict]:
+    def get_chat_history(self, agent_config: AgentConfig,full_history:bool = False) -> List[Dict]:
         """Load chat history from bucket."""
         filepath = f"/bucket-mount/{agent_config.workspace_id}/{agent_config.context_id}_chat.json"
         history = self.file_service.load_json(agent_config.workspace_id,f'{agent_config.context_id}_chat.json') or []
-        return self._format_chat_history(history, agent_config)
+        # Ensure history is a list
+        if isinstance(history, dict):
+            history = [history]  # Convert single dictionary to a list
+            
+        if full_history:
+            history = self.filter_messages_for_context(history, agent_config.llm_config.context_size)
+        return history
 
     def save_chat_history(self, messages: List[Dict], agent_config: AgentConfig):
         import shortuuid
@@ -102,3 +108,21 @@ class ChatHandler:
         # Restore message order: system first, then chronological
         return ([msg for msg in filtered_messages if msg.get('role') == 'system'] + 
                 list(reversed([msg for msg in filtered_messages if msg.get('role') != 'system'])))
+
+    
+    def delete_chat_history(self, agent_config: AgentConfig) -> bool:
+        """Delete chat history file for the given agent config."""
+        filename = f"{agent_config.context_id}_chat.json"
+        print(f"Deleting file {filename}")
+        return self.file_service.delete_file(agent_config.workspace_id, filename)
+
+    def remove_image_messages(self, messages: List[dict]) -> List[dict]:
+        """Remove messages that contain markdown image syntax from chat history."""
+        def contains_image_markdown(content: str) -> bool:
+            import re
+            pattern = r'!\[.*?\]\(.*?\)'
+            return bool(re.search(pattern, content))
+        return [
+            msg for msg in messages 
+            if msg.get('tag') != 'image'
+        ]

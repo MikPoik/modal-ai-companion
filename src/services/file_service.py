@@ -32,9 +32,13 @@ class FileService:
                 return json.load(f)
         return None
 
-    def save_image_to_bucket(self, image_url: str, agent_config: AgentConfig, sub_folder: str = "") -> str:
+    def save_image_to_bucket(self, image_url: str, agent_config: AgentConfig, sub_folder: str = "",preallocated_image_name:str ="") -> str:
         """Save image to cloud bucket and return public URL."""
-        filename = f"{shortuuid.uuid()}.png"
+        filename = ""
+        if preallocated_image_name:
+            filename = preallocated_image_name
+        else:
+            filename = f"{shortuuid.uuid()}.png"
 
         if sub_folder and not sub_folder.endswith('/'):
             sub_folder += "/"
@@ -51,12 +55,21 @@ class FileService:
         image_path.write_bytes(response.content)
 
         return public_url
+        
+    def generate_preallocated_url(self, agent_config: AgentConfig, sub_folder: str = "") -> tuple[str, str]:
+        """Generate preallocated filename and public URL."""
+        filename = f"{shortuuid.uuid()}.png"
+        if sub_folder and not sub_folder.endswith('/'):
+            sub_folder += "/"
 
+        public_url = f"{self.public_url_base}/{sub_folder}{agent_config.workspace_id}/{filename}"
+        return filename, public_url
     
     def delete_file(self, workspace_id: str, filename: str) -> bool:
         """Delete a file from the workspace."""
         try:
             path = self.get_path(workspace_id, filename)
+            print(f"Deleting file {path}")
             if path.exists():
                 print("Deleting file:", path)
                 path.unlink()

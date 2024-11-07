@@ -34,7 +34,7 @@ class IndexHandler:
         )
         return index_path, chunks_path
 
-    def create_and_save_index(self, background: str, agent_config: AgentConfig, update_config: bool = False) -> bool:
+    def create_and_save_index(self, backstory: str, agent_config: AgentConfig, update_config: bool = False) -> bool:
         """Create and save vector index for background text."""
         from annoy import AnnoyIndex
         self.initialize_embedding_api(agent_config)
@@ -47,7 +47,7 @@ class IndexHandler:
 
         print("Creating new index for background")
         try:
-            embedded_chunks = self._embed_long_text(background)
+            embedded_chunks = self._embed_long_text(backstory)
             if not embedded_chunks:
                 print("No embedded chunks generated")
                 return False

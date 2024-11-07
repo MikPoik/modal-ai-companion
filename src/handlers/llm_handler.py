@@ -28,7 +28,7 @@ class LLMHandler:
         from openai import OpenAI
         """Initialize OpenAI client with provider-specific configuration."""
         config = self._provider_configs.get(provider, self._provider_configs["openai"])
-
+        #print("*** LLM CONFIG ***: ",config)
         if config["api_key_env"] not in os.environ:
             raise ValueError(f"Missing API key for provider {provider}")
 
@@ -39,13 +39,13 @@ class LLMHandler:
 
     def generate(self, 
                 messages: List[Dict], 
-                agent_config: AgentConfig,temperature=None,model=None,stop_words=None) -> Generator[str, None, None]:
+                agent_config: AgentConfig,temperature=None,model=None,provider=None,stop_words=None) -> Generator[str, None, None]:
         """Generate text using the configured LLM provider."""
         if not agent_config.llm_config.provider:
             raise ValueError("LLM provider not specified in config")
 
         if self.client is None:
-            self.client = self.initialize_client(agent_config.llm_config.provider)
+            self.client = self.initialize_client(provider or agent_config.llm_config.provider)
 
         try:
             response = self.client.chat.completions.create(
@@ -68,6 +68,6 @@ class LLMHandler:
     def _get_provider_config(self, provider: str) -> tuple[str, str]:
         """Get provider configuration (base URL and API key)."""
         config = self._provider_configs.get(provider, self._provider_configs["openai"])
-        if config["api_key_env"] not in os.environ:
-            raise ValueError(f"Missing API key for provider {provider}")
+        #if config["api_key_env"] not in os.environ:
+            #raise ValueError(f"Missing API key for provider {provider}")
         return config["base_url"], os.environ[config["api_key_env"]]

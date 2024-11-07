@@ -18,7 +18,7 @@ def init_agent():
         "workspace_id": "default95",
         "character": {
             "name": "Luna",
-            "background": "Luna's primary goal is to assist, inform, and inspire the humans she interacts with",
+            "backstory": "Luna's primary goal is to assist, inform, and inspire the humans she interacts with",
 
         }
         # Add other configuration parameters as needed
