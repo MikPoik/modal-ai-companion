@@ -47,9 +47,10 @@ class ImageHandler:
             print(f"Error generating image: {str(e)}")
             return None
 
-    def generate_avatar(self, prompt: str, agent_config: AgentConfig) -> Optional[str]:
+    def generate_avatar(self, agent_config: AgentConfig,folder="") -> Optional[str]:
         """Generate an avatar image."""
-        return self.generate_image(prompt, agent_config, folder="avatars")
+        print(agent_config.model_dump_json())
+        return self.generate_image(agent_config.prompt,agent_config,folder= "")
 
     def _submit_job(self, prompt: str, agent_config: AgentConfig) -> Optional[str]:
         """Submit image generation job to FAL AI."""
@@ -80,7 +81,8 @@ class ImageHandler:
             "prompt_weighting": True,
             "num_images": 1,
         }
-
+        formatted_job_details = json.dumps(job_details, indent=4)
+        #print(f"Submitting job with details: {formatted_job_details}")
         # Add optional loras if configured
         if agent_config.image_config.loras:
             job_details["loras"] = agent_config.image_config.loras
@@ -210,7 +212,7 @@ class ImageHandler:
         Imagine fitting image description keywords for an imaginary image of {agent_config.character.name}, with looks like {agent_config.character.appearance}.
 
         Consider previous conversation context and possible earlier image descriptions.
-        Give your response in the following object format with json array, write up to 30 detailed image description keywords here as list covering topics in order:
+        Give your response in the following object format with json array, write up to 20 detailed image description keywords here as list covering topics in order:
         {{
         "ImageDescriptionKeywords": [
             {agent_config.character.appearance},

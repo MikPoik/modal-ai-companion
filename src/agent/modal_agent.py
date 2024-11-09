@@ -1,5 +1,5 @@
 import modal
-from src.models.schemas import AgentConfig, Generation, LLMConfig, volume,app
+from src.models.schemas import AgentConfig, ImageConfig, LLMConfig, volume,app
 from src.handlers.llm_handler import LLMHandler
 from src.handlers.image_handler import ImageHandler
 from src.handlers.index_handler import IndexHandler
@@ -8,7 +8,8 @@ from src.handlers.agent_config_handler import AgentConfigHandler
 from src.services.file_service import FileService
 from src.services.cache_service import CacheService
 from typing import Generator, Optional, Dict
-
+from src.gcp_constants import GCP_PUBLIC_IMAGE_BUCKET, GCP_CHAT_BUCKET
+import json
 
 agent_image = (
 modal.Image.debian_slim(python_version="3.10")
@@ -48,17 +49,18 @@ secrets=[
     modal.Secret.from_name("gcp-secret"),
     modal.Secret.from_name("deep-infra-api-key"),
     modal.Secret.from_name("falai-apikey"),
-    modal.Secret.from_name("openai-secret")
+    modal.Secret.from_name("openai-secret"),
+    modal.Secret.from_name("togetherai-api-key")
 ],
 volumes={
     "/data": volume,
     "/bucket-mount": modal.CloudBucketMount(
-        bucket_name="modal-agent-chat-test",
+        bucket_name=f"{GCP_CHAT_BUCKET}",
         bucket_endpoint_url="https://storage.googleapis.com",
         secret=gcp_hmac_secret
     ),
     "/cloud-images": modal.CloudBucketMount(
-        bucket_name="coqui-samples",
+        bucket_name=f"{GCP_PUBLIC_IMAGE_BUCKET}",
         bucket_endpoint_url="https://storage.googleapis.com",
         secret=gcp_hmac_secret
     )
@@ -66,7 +68,7 @@ volumes={
 )
 class ModalAgent:
     def __init__(self):
-        print("Initializing Agent")
+        print("Initializing ModalAgent")
         # Initialize handlers
         self.llm_handler = LLMHandler()
         self.image_handler = ImageHandler()
@@ -85,36 +87,20 @@ class ModalAgent:
         return self.config_manager.get_or_create_config(agent_config, update_config)
     
     @modal.method()
-    async def generate_avatar(self, prompt: str,agent_config:AgentConfig) -> Optional[str]:
+    async def generate_avatar(self, agent_config:AgentConfig) -> Optional[str]:
         """Generate avatar using image handler"""
-        agent_config = self.get_or_create_agent_config.local(
-            agent_config or AgentConfig(
-                context_id=generation.context_id,
-                agent_id=generation.agent_id,
-                workspace_id=generation.workspace_id,
-            )
-        )
-        agent_config = self.get_or_create_agent_config.local(agent_config)
-        return self.image_handler.generate_avatar(prompt, agent_config)
+        return self.image_handler.generate_avatar(agent_config)
     
     @modal.method(is_generator=True)
-    def run(self, generation: Generation, agent_config: Optional[AgentConfig] = None) -> Generator[str, None, None]:
+    def run(self, agent_config: AgentConfig) -> Generator[str, None, None]:
         """Main method to handle generation requests"""
         try:
             # Get or create agent configuration
-            agent_config = self.get_or_create_agent_config.local(
-                agent_config or AgentConfig(
-                    context_id=generation.context_id,
-                    agent_id=generation.agent_id,
-                    workspace_id=generation.workspace_id,
-                )
-            )
-            formatted_config = json.dumps(agent_config.model_dump(), indent=4)
-            #print(f"Agent config: {formatted_config}")
-        
+            agent_config = self.get_or_create_agent_config.local(agent_config) 
+       
             # Get chat history and prepare messages
             messages = self.chat_handler.prepare_messages(
-                generation.prompt,  # Pass the prompt string
+                agent_config.prompt or "",  # Pass the prompt string
                 agent_config       # Pass the AgentConfig object, not chat history
             )
             messages_without_image = None

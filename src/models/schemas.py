@@ -19,8 +19,7 @@ class Character(BaseModel):
 class BaseConfig(BaseModel):
     context_id: Optional[str] = Field(default_factory=generate_uuid)
     agent_id: Optional[str] = Field(default_factory=generate_uuid)
-    workspace_id: Optional[str] = Field(default_factory=generate_uuid)
-    update_config: bool = False
+    workspace_id: Optional[str] = Field(default_factory=generate_uuid)    
     kwargs: Optional[Dict[str, Any]] = None
 
     
@@ -65,7 +64,7 @@ class ImageConfig(BaseModel):
     image_provider: Optional[str] = "fal-ai"
     image_size: Optional[str] = "portrait_4_3"
     num_inference_steps: Optional[int] = 30
-    guidance_scale: Optional[float] = 5.0
+    guidance_scale: Optional[float] = 5.5
     scheduler: Optional[str] = "DPM++ 2M SDE"
     clip_skip: Optional[int] = 2
     loras: Optional[List[str]] = []
@@ -81,12 +80,10 @@ class AgentConfig(BaseConfig):
     image_config: ImageConfig = ImageConfig()
     character: Optional[Character] = Character()
     enable_image_generation: bool = True
+    update_config: bool = False
+    ephemeral: bool = False
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-
-class Generation(BaseConfig):
-    prompt: str
-    agent_config: Optional[AgentConfig] = None
 
     
 app = modal.App(name="modal-agent")

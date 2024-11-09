@@ -4,6 +4,7 @@ import pathlib
 import requests
 import shortuuid
 from typing import Any, Optional
+from src.gcp_constants import GCP_PUBLIC_IMAGE_BUCKET
 from src.models.schemas import AgentConfig
 
 class FileService:
@@ -11,7 +12,7 @@ class FileService:
         import shortuuid
         self.base_path = pathlib.Path(base_path)
         self.image_base_path = pathlib.Path("/cloud-images")
-        self.public_url_base = "https://storage.googleapis.com/coqui-samples"
+        self.public_url_base = f"https://storage.googleapis.com/{GCP_PUBLIC_IMAGE_BUCKET}"
 
     def get_path(self, workspace_id: str, filename: str) -> pathlib.Path:
         path = pathlib.Path(f"{self.base_path}/{workspace_id}/{filename}")

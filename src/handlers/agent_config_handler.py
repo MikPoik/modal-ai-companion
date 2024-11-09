@@ -16,6 +16,12 @@ class AgentConfigHandler:
         """
         Get existing config or create new one if it doesn't exist
         """
+        if not agent_config:
+            print(f"No agent config provided, create defaults")
+            if not agent_config.workspace_id:
+                print(f"No workspace ID provided, create defaults")
+            agent_config = AgentConfig()
+            
         cache_key = f"{agent_config.workspace_id}_{agent_config.agent_id}"
 
         # Try to get from memory cache first

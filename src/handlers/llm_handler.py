@@ -43,9 +43,14 @@ class LLMHandler:
         """Generate text using the configured LLM provider."""
         if not agent_config.llm_config.provider:
             raise ValueError("LLM provider not specified in config")
+            
+        together_ai_models = ['meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo','NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO']
+        
 
-        if self.client is None:
-            self.client = self.initialize_client(provider or agent_config.llm_config.provider)
+        if agent_config.llm_config.model in together_ai_models:
+            provider = "togetherai"
+
+        self.client = self.initialize_client(provider or agent_config.llm_config.provider)
 
         try:
             response = self.client.chat.completions.create(

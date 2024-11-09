@@ -6,7 +6,14 @@ from character_loader import load_character_from_yaml, Character
 API_URL = "https://mikpoik--modal-agent-fastapi-app-dev.modal.run/prompt"
 AUTH_TOKEN = os.environ["API_KEY"]
 
-async def send_message(client: httpx.AsyncClient, message: str, workspace_id: str = "default90"):
+TIMEOUT_SETTINGS = httpx.Timeout(
+    timeout=300.0,  # 5 minutes total timeout
+    connect=60.0,   # connection timeout
+    read=300.0,     # read timeout
+    write=60.0      # write timeout
+)
+
+async def send_message(client: httpx.AsyncClient, message: str, workspace_id: str = "default88"):
     headers = {
         "Authorization": f"Bearer {AUTH_TOKEN}",
         "Content-Type": "application/json"
@@ -20,7 +27,7 @@ async def send_message(client: httpx.AsyncClient, message: str, workspace_id: st
     }
 
     try:
-        async with client.stream('POST', API_URL, headers=headers, json=data, timeout=90) as response:
+        async with client.stream('POST', API_URL, headers=headers, json=data, timeout=TIMEOUT_SETTINGS) as response:
             async for line in response.aiter_lines():
                 if line:
                     print(line)
@@ -43,12 +50,12 @@ async def init_character(client: httpx.AsyncClient, character_yaml: str):
     agent_config = {
         "context_id": "default2",
         "agent_id": "default2",
-        "workspace_id": "default90",
+        "workspace_id": "default88",
         "character": character.to_dict()
     }
 
     init_url = "https://mikpoik--modal-agent-fastapi-app-dev.modal.run/init_agent"
-    response = await client.post(init_url, headers=headers, json=agent_config)
+    response = await client.post(init_url, headers=headers, json=agent_config, timeout=TIMEOUT_SETTINGS)
     if response.status_code == 200:
         print(f"Initialized agent with character: {character.name}")
     else:
