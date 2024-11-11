@@ -13,7 +13,6 @@ class ChatHandler:
     def prepare_messages(self, prompt: str, agent_config: AgentConfig) -> List[Dict]:
         """Prepare messages for the LLM including system prompt and relevant background."""
         messages = []
-        
         relevant_backstory = None
         # Get relevant background if available
         if (agent_config.character and 
@@ -75,7 +74,10 @@ class ChatHandler:
         filename = f"{agent_config.context_id}_chat.json"
         filepath = f"/bucket-mount/{agent_config.workspace_id}/{agent_config.context_id}_chat.json"
         self.file_service.save_json(messages,agent_config.workspace_id,filename)
-
+        
+    def append_chat_history(self, messages: List[Dict], agent_config: AgentConfig):
+        pass
+        
     def _format_chat_history(self, history: List[Dict], agent_config: AgentConfig) -> List[Dict]:
         system_prompt = self._format_system_prompt(agent_config)
         return [{"role": "system", "content": system_prompt}] + history[-agent_config.llm_config.context_size:]

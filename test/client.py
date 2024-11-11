@@ -5,7 +5,7 @@ from character_loader import load_character_from_yaml, Character
 
 API_URL = "https://mikpoik--modal-agent-fastapi-app-dev.modal.run/prompt"
 AUTH_TOKEN = os.environ["API_KEY"]
-
+WORKSPACE = "default82"
 TIMEOUT_SETTINGS = httpx.Timeout(
     timeout=300.0,  # 5 minutes total timeout
     connect=60.0,   # connection timeout
@@ -13,7 +13,7 @@ TIMEOUT_SETTINGS = httpx.Timeout(
     write=60.0      # write timeout
 )
 
-async def send_message(client: httpx.AsyncClient, message: str, workspace_id: str = "default88"):
+async def send_message(client: httpx.AsyncClient, message: str, workspace_id: str = WORKSPACE):
     headers = {
         "Authorization": f"Bearer {AUTH_TOKEN}",
         "Content-Type": "application/json"
@@ -50,7 +50,7 @@ async def init_character(client: httpx.AsyncClient, character_yaml: str):
     agent_config = {
         "context_id": "default2",
         "agent_id": "default2",
-        "workspace_id": "default88",
+        "workspace_id": WORKSPACE,
         "character": character.to_dict()
     }
 
@@ -67,22 +67,23 @@ async def main():
         await init_character(client, "test/characters/velvet.yaml")
 
         # Send initial greeting
-        await send_message(client, """Take the role of character in this chat.
-        Narrative Guidelines:
-        • Format spoken dialogue in quotation marks.
-        • Show actions between asterisks.
-        • Express internal thoughts in parentheses.
-        • Include emotional states and reactions.
-        • Describe environment and atmosphere when relevant.
-        • Use third-person narration.
+        await send_message(client, """Narrate Velvet's scene for me in this chat.
+Narrative Guidelines:
+• Format spoken dialogue in quotation marks in first person.
+• Show actions between asterisks in third person.
+• Express internal thoughts in parentheses.
+• Include emotional states and reactions.
+• Describe environment and atmosphere when relevant.
+• Use third-person narration.
 
-        Formatting Rules:
-        • Keep responses concise and engaging
-        • Balance dialogue, action, and internal monologue
-        • Use environmental details to enhance immersion
-        • Maintain consistent character voice and perspective
+Companion Narration Instructions:
+• Narrate character's perspective in third person.
+• Keep responses concise and engaging
+• Balance character dialogue, action, and internal monologue
+• Use environmental details to enhance immersion
+• Maintain consistent character voice and perspective
 
-        Begin your responses with a brief scene-setting or action to establish context.""")
+Start Velvet's response with a brief description of the setting or an action.""")
 
         while True:
             prompt = input("Enter your prompt ('exit' to quit): ")

@@ -1,2 +1,2 @@
-GCP_PUBLIC_IMAGE_BUCKET = 'coqui-samples'
-GCP_CHAT_BUCKET = 'modal-agent-chat-test'
+GCP_PUBLIC_IMAGE_BUCKET = 'truluv-public'
+GCP_CHAT_BUCKET = 'truluv-chats'

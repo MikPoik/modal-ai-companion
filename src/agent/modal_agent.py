@@ -1,5 +1,5 @@
 import modal
-from src.models.schemas import AgentConfig, ImageConfig, LLMConfig, volume,app
+from src.models.schemas import AgentConfig, ImageConfig,PromptConfig, LLMConfig, volume,app
 from src.handlers.llm_handler import LLMHandler
 from src.handlers.image_handler import ImageHandler
 from src.handlers.index_handler import IndexHandler
@@ -7,7 +7,7 @@ from src.handlers.chat_handler import ChatHandler
 from src.handlers.agent_config_handler import AgentConfigHandler
 from src.services.file_service import FileService
 from src.services.cache_service import CacheService
-from typing import Generator, Optional, Dict
+from typing import Generator, Optional, Dict, Union
 from src.gcp_constants import GCP_PUBLIC_IMAGE_BUCKET, GCP_CHAT_BUCKET
 import json
 
@@ -36,21 +36,22 @@ with agent_image.imports():
 
 # Define secrets and mounts
 gcp_hmac_secret = modal.Secret.from_name(
-"gcp-secret",
+"gcp-secret-prod",
 required_keys=["GOOGLE_ACCESS_KEY_ID", "GOOGLE_ACCESS_KEY_SECRET"]
 )
 
 @app.cls(
-timeout=60 * 2,
+timeout=60 * 5,
 container_idle_timeout=60 * 15,
 allow_concurrent_inputs=10,
 image=agent_image,
 secrets=[
-    modal.Secret.from_name("gcp-secret"),
+    modal.Secret.from_name("gcp-secret-prod"),
     modal.Secret.from_name("deep-infra-api-key"),
     modal.Secret.from_name("falai-apikey"),
     modal.Secret.from_name("openai-secret"),
-    modal.Secret.from_name("togetherai-api-key")
+    modal.Secret.from_name("togetherai-api-key"),
+    modal.Secret.from_name("getimgai-api-key")
 ],
 volumes={
     "/data": volume,
@@ -82,27 +83,37 @@ class ModalAgent:
 
     
     @modal.method()
-    def get_or_create_agent_config(self, agent_config: AgentConfig, update_config: bool = False) -> AgentConfig:
+    def get_or_create_agent_config(self, agent_config: Union[AgentConfig, PromptConfig], update_config: bool = False) -> Union[AgentConfig, PromptConfig]:
         """Handle agent configuration management"""
-        return self.config_manager.get_or_create_config(agent_config, update_config)
+        base_config = self.config_manager.get_or_create_config(agent_config, update_config)
+
+        if isinstance(agent_config, PromptConfig):
+            # If input is PromptConfig, ensure we maintain the prompt field
+            base_dict = base_config.model_dump()
+            if 'prompt' in base_dict:
+                del base_dict['prompt']  # Remove prompt if it exists
+            return PromptConfig(**base_dict, prompt=agent_config.prompt)
+        return base_config
     
     @modal.method()
-    async def generate_avatar(self, agent_config:AgentConfig) -> Optional[str]:
+    async def generate_avatar(self, agent_config:PromptConfig) -> Optional[str]:
         """Generate avatar using image handler"""
         return self.image_handler.generate_avatar(agent_config)
     
     @modal.method(is_generator=True)
-    def run(self, agent_config: AgentConfig) -> Generator[str, None, None]:
+    def run(self, agent_config: PromptConfig) -> Generator[str, None, None]:
         """Main method to handle generation requests"""
         try:
             # Get or create agent configuration
             agent_config = self.get_or_create_agent_config.local(agent_config) 
-       
+            if not isinstance(agent_config, PromptConfig):
+                print("Not PromptConfig")
             # Get chat history and prepare messages
             messages = self.chat_handler.prepare_messages(
-                agent_config.prompt or "",  # Pass the prompt string
+                agent_config.prompt,  # Pass the prompt string
                 agent_config       # Pass the AgentConfig object, not chat history
             )
+
             messages_without_image = None
             if agent_config.enable_image_generation:
                 messages_without_image = self.chat_handler.remove_image_messages(messages)
@@ -145,7 +156,7 @@ class ModalAgent:
             yield f"Error: {str(e)}"
 
     @modal.method()
-    def delete_chat_history(self, agent_config: Optional[AgentConfig] = None) -> bool:
+    def delete_chat_history(self, agent_config: AgentConfig) -> bool:
         """Delete chat history for the given agent configuration."""
         try:
             return self.chat_handler.delete_chat_history(agent_config)
@@ -216,3 +227,17 @@ class ModalAgent:
         except Exception as e:
             print(f"Error getting chat history: {str(e)}")
             return []
+
+
+    @modal.method()
+    def append_chat_history(self, agent_config: AgentConfig, messages: List[Dict]) -> bool:
+        try:
+            # Get agent config first to ensure it exists and is up to date
+            agent_config = self.get_or_create_agent_config.local(agent_config)
+    
+            # Use the chat handler to append messages to chat history
+            self.chat_handler.append_chat_history(agent_config, messages)
+            return True
+        except Exception as e:
+            print(f"Error appending chat history: {str(e)}")
+            return False

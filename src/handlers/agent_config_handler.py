@@ -1,6 +1,6 @@
 # src/handlers/agent_config_handler.py
-from typing import Optional, Dict
-from src.models.schemas import AgentConfig
+from typing import Optional, Dict,Union
+from src.models.schemas import AgentConfig,PromptConfig
 from src.handlers.index_handler import IndexHandler
 from src.services.file_service import FileService
 from src.services.cache_service import CacheService
@@ -12,21 +12,29 @@ class AgentConfigHandler:
         self.config_cache: Dict[str, AgentConfig] = {}
         self.index_handler = IndexHandler()
 
-    def get_or_create_config(self, agent_config: AgentConfig, update_config: bool = False) -> AgentConfig:
+    def get_or_create_config(self, agent_config: Union[AgentConfig, PromptConfig], update_config: bool = False) -> Union[AgentConfig, PromptConfig]:
         """
         Get existing config or create new one if it doesn't exist
         """
+
         if not agent_config:
             print(f"No agent config provided, create defaults")
             if not agent_config.workspace_id:
                 print(f"No workspace ID provided, create defaults")
             agent_config = AgentConfig()
-            
+
         cache_key = f"{agent_config.workspace_id}_{agent_config.agent_id}"
 
         # Try to get from memory cache first
         if not update_config and cache_key in self.config_cache:
-            return self.config_cache[cache_key]
+            cached_config = self.config_cache[cache_key]
+            if isinstance(agent_config, PromptConfig):
+                # Create a new PromptConfig from the cached base config
+                base_dict = cached_config.model_dump()
+                if 'prompt' in base_dict:
+                    del base_dict['prompt']  # Remove prompt if it exists
+                return PromptConfig(**base_dict, prompt=agent_config.prompt)
+            return cached_config
 
         # Try to get from file cache
         config_path = f"{agent_config.agent_id}_config.json"
@@ -63,6 +71,11 @@ class AgentConfigHandler:
 
         # Update memory cache
         self.config_cache[cache_key] = agent_config
+        if isinstance(agent_config, PromptConfig):
+            base_dict = agent_config.dict()
+            if 'prompt' in base_dict:
+                del base_dict['prompt']  # Remove prompt from the dictionary
+            return PromptConfig(**base_dict, prompt=agent_config.prompt)
         return agent_config
 
     def update_config(self, agent_config: AgentConfig) -> AgentConfig:

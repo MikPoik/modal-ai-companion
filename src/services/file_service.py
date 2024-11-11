@@ -57,6 +57,24 @@ class FileService:
 
         return public_url
         
+    def save_binary_to_bucket(self, binary_data: bytes, agent_config: AgentConfig, sub_folder: str = "", preallocated_image_name: str = "") -> str:
+        """Save binary data directly to bucket and return public URL."""
+        filename = preallocated_image_name if preallocated_image_name else f"{shortuuid.uuid()}.png"
+
+        if sub_folder and not sub_folder.endswith('/'):
+            sub_folder += "/"
+
+        image_path = pathlib.Path(f"{self.image_base_path}/{sub_folder}{agent_config.workspace_id}/{filename}")
+        public_url = f"{self.public_url_base}/{sub_folder}{agent_config.workspace_id}/{filename}"
+        # Create directory if needed
+        image_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"Saving image to bucket {image_path}")
+
+        # Save binary data directly
+        image_path.write_bytes(binary_data)
+
+        return public_url
+            
     def generate_preallocated_url(self, agent_config: AgentConfig, sub_folder: str = "") -> tuple[str, str]:
         """Generate preallocated filename and public URL."""
         filename = f"{shortuuid.uuid()}.png"

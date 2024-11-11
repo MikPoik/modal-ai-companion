@@ -4,54 +4,111 @@ import os
 import json
 import time
 import requests
-from src.models.schemas import AgentConfig
+from src.models.schemas import AgentConfig, PromptConfig
 from src.handlers.llm_handler import LLMHandler
 from src.services.file_service import FileService
 import textwrap
 import shortuuid
+import base64
+
+euler_a_models = [ "156375","286821","303526","378499","293564","384264" ]
 
 
 class ImageHandler:
     def __init__(self):
         self.file_service = FileService('/cloud-images')
         self.base_url = "https://queue.fal.run"
+        self.getimg_base_url = "https://api.getimg.ai/v1/stable-diffusion/text-to-image"
         self.api_key = os.environ["FALAI_API_KEY"]
+        self.getimg_api_key = os.environ["GETIMGAI_API_KEY"]
         self.llm_handler = LLMHandler()
 
-    def generate_image(self, prompt: str, agent_config: AgentConfig, folder: str = "images",preallocated_image_name:str = "") -> Optional[str]:
-        """Generate an image and save it to the specified folder."""
-        #print(f"Generating image with prompt: {prompt}")
+    def _generate_with_getimg(self, prompt: str, agent_config: AgentConfig) -> Optional[bytes]:
+        """Generate image using GetImg API and return binary data"""
+        headers = {
+            "Authorization": f"Bearer {self.getimg_api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": agent_config.image_config.image_model,
+            "prompt": prompt,
+            "negative_prompt": agent_config.image_config.negative_prompt,
+            "width": agent_config.image_config.image_width,
+            "height": agent_config.image_config.image_height,
+            "steps": agent_config.image_config.num_inference_steps,
+            "guidance": agent_config.image_config.guidance_scale,
+            "scheduler": "dpmsolver++",
+            "output_format": agent_config.image_config.image_format
+        }
 
         try:
-            # Submit job and get status URL
-            status_url = self._submit_job(prompt, agent_config)
-            if not status_url:
-                print("Failed to submit image generation job")
+            response = requests.post(self.getimg_base_url, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+
+            if "image" in result:
+                # Decode base64 image to binary
+                return base64.b64decode(result["image"])
+            return None
+        except Exception as e:
+            print(f"Error generating image with GetImg: {str(e)}")
+            return None
+            
+    def generate_image(self, prompt: str, agent_config: AgentConfig, folder: str = "images",preallocated_image_name:str = "") -> Optional[str]:
+        """Generate an image and save it to the specified folder."""
+        try:
+            if agent_config.image_config.provider == "getimg" or "https" not in agent_config.image_config.image_model:
+                #print(f"Generating image with GetImg")
+                image_data = self._generate_with_getimg(prompt, agent_config)
+                if image_data:
+                    return self.file_service.save_binary_to_bucket(
+                        image_data,
+                        agent_config,
+                        folder,
+                        preallocated_image_name=preallocated_image_name
+                    )
                 return None
-
-            # Check status and get image URL
-            image_url = self._check_status_and_download_image(status_url)
-            if not image_url:
-                print("Failed to generate image")
-                return None
-
-            # Save image to bucket/storage
-            return self.file_service.save_image_to_bucket(
-                image_url, 
-                agent_config,
-                folder,
-                preallocated_image_name=preallocated_image_name
-            )
-
+            else:
+                # Existing FAL.ai implementation
+                status_url = self._submit_job(prompt, agent_config)
+                if not status_url:
+                    print("Failed to submit image generation job")
+                    return None
+                image_url = self._check_status_and_download_image(status_url)
+                if not image_url:
+                    print("Failed to generate image")
+                    return None
+                return self.file_service.save_image_to_bucket(
+                    image_url,
+                    agent_config,
+                    folder,
+                    preallocated_image_name=preallocated_image_name
+                )
         except Exception as e:
             print(f"Error generating image: {str(e)}")
             return None
 
-    def generate_avatar(self, agent_config: AgentConfig,folder="") -> Optional[str]:
+    def generate_avatar(self, agent_config: PromptConfig,folder="") -> Optional[str]:
         """Generate an avatar image."""
-        print(agent_config.model_dump_json())
+        
         return self.generate_image(agent_config.prompt,agent_config,folder= "")
-
+        
+    def format_image_size(self,image_size):
+        """Helper to format image size from string or dict"""
+        
+        if isinstance(image_size, str):
+            try:
+                # Check if string is JSON formatted
+                parsed_size = json.loads(image_size)
+                if isinstance(parsed_size, dict):
+                    return parsed_size
+                return image_size
+            except json.JSONDecodeError:
+                # If not valid JSON, return original string (like "portrait_4_3")
+                return image_size
+        return image_size
+        
     def _submit_job(self, prompt: str, agent_config: AgentConfig) -> Optional[str]:
         """Submit image generation job to FAL AI."""
         headers = {
@@ -59,20 +116,25 @@ class ImageHandler:
             "Content-Type": "application/json"
         }
 
-        euler_a_models = [ "156375","286821","303526","378499","293564","384264" ]
+
 
         scheluder_config = "DPM++ 2M SDE"
+        negative_prompt = agent_config.image_config.negative_prompt
         if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models):
             scheluder_config = "Euler A"
-            
+            negative_prompt = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name"
+
+        image_size = self.format_image_size(agent_config.image_config.image_size)
+                
+
         # Prepare job details based on agent config
         job_details = {
             "prompt": prompt,
             "model_name": agent_config.image_config.image_model,
-            "negative_prompt": agent_config.image_config.negative_prompt,
+            "negative_prompt": negative_prompt,
             "num_inference_steps": agent_config.image_config.num_inference_steps,
             "guidance_scale": agent_config.image_config.guidance_scale,
-            "image_size": agent_config.image_config.image_size,
+            "image_size": image_size,
             "scheduler": scheluder_config,
             "clip_skip": agent_config.image_config.clip_skip,
             "enable_safety_checker": agent_config.image_config.enable_safety_checker,
@@ -203,7 +265,12 @@ class ImageHandler:
             return last_ten_messages
     
         local_messages = messages.copy()
-
+        prompt_prefix = ""
+        prompt_suffix = "masterpiece ,realistic,skin texture,ultra detailed,highres, RAW,8k, selfie, self shot,depth of field"
+        if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models):
+            prompt_prefix = "masterpiece, best quality, very aesthetic, absurdres,selfie, self shot,depth of field "
+            
+            
         prompt = textwrap.dedent(
         f"""\
         ## Instruction
@@ -211,11 +278,11 @@ class ImageHandler:
     
         Imagine fitting image description keywords for an imaginary image of {agent_config.character.name}, with looks like {agent_config.character.appearance}.
 
-        Consider previous conversation context and possible earlier image descriptions.
+        Consider previous conversation and current context.
         Give your response in the following object format with json array, write up to 20 detailed image description keywords here as list covering topics in order:
         {{
         "ImageDescriptionKeywords": [
-            {agent_config.character.appearance},
+            {prompt_prefix}{agent_config.character.appearance},
             Detailed Subject Looks (hair and eye color,clothes etc),
             Action,
             Context,
@@ -225,7 +292,7 @@ class ImageHandler:
             Environment Description,
             Mood/Atmosphere Description,
             Style,
-            Style Execution (etc. "full body portrait, masterpiece ,realistic,skin texture,ultra detailed,highres, RAW,8k, selfie, self shot,depth of field"" )
+            Style Execution (etc. {prompt_suffix})" )
         ]
         }}
     

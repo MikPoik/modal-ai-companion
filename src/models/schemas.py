@@ -34,6 +34,7 @@ class LLMConfig(BaseModel):
     Dialogue Style: {char_seed}
 
     Embodiment Instructions:
+    • Use third-person narration for actions.
     • Authentically embody {char_name} with natural, creative, and engaging responses
     • Stay true to {char_name}'s characterization, personality, and desires
     • Make independent decisions based on {char_name}'s motivations
@@ -62,7 +63,9 @@ class LLMConfig(BaseModel):
 class ImageConfig(BaseModel):
     image_model: Optional[str] = "https://civitai.com/api/download/models/312314"
     image_provider: Optional[str] = "fal-ai"
-    image_size: Optional[str] = "portrait_4_3"
+    image_size: Optional[str] = "portrait_4_3" #Fal.ai
+    image_width: Optional[int] = 1024 #for getimg.ai
+    image_height: Optional[int] = 768 #for getimg.ai
     num_inference_steps: Optional[int] = 30
     guidance_scale: Optional[float] = 5.5
     scheduler: Optional[str] = "DPM++ 2M SDE"
@@ -73,9 +76,9 @@ class ImageConfig(BaseModel):
     image_model_architecture: Optional[str] = "sdxl"
     image_format: Optional[str] = "png"
     enable_safety_checker: Optional[bool] = False
+    provider:str ="fal.ai"
     
 class AgentConfig(BaseConfig):
-    prompt: Optional[str] = ""
     llm_config: LLMConfig = LLMConfig()
     image_config: ImageConfig = ImageConfig()
     character: Optional[Character] = Character()
@@ -84,7 +87,8 @@ class AgentConfig(BaseConfig):
     ephemeral: bool = False
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+class PromptConfig(AgentConfig):
+    prompt: str
 
-    
 app = modal.App(name="modal-agent")
 volume = modal.Volume.from_name("agent-data",create_if_missing=True)

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional,Union
 import modal
 from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -10,7 +10,7 @@ import json
 
 
 from src.agent.modal_agent import ModalAgent
-from src.models.schemas import app,  AgentConfig, LLMConfig, volume
+from src.models.schemas import app,  AgentConfig,PromptConfig, LLMConfig, volume
 
 web_app = FastAPI()
 modal_agent = ModalAgent()
@@ -41,13 +41,9 @@ async def authenticate(credentials: HTTPAuthorizationCredentials = Depends(http_
 
 @web_app.post("/generate_avatar")
 async def generate_avatar(
-    agent_config:AgentConfig,credentials: str = Depends(authenticate)):
+    agent_config:PromptConfig,credentials: str = Depends(authenticate)):
     try:   
-        
-        
-        print(f"agent config: {agent_config}")
         avatar_url = modal_agent.generate_avatar.remote(agent_config)
-        print("Avatar URL: ",avatar_url)
         return avatar_url
     except Exception as e:
         print(e)
@@ -56,19 +52,24 @@ async def generate_avatar(
 @web_app.post("/init_agent")
 async def init_agent(agent_config: AgentConfig, credentials: str = Depends(authenticate)):
     print("Initializing Agent")
-    is_valid = check_agent_config(agent_config)
-    #print("agent_config", agent_config)
-    if not is_valid:
+    if not check_agent_config(agent_config):
         raise HTTPException(status_code=400, detail="Invalid agent configuration")
+    #print("agent_config", agent_config)
     return modal_agent.get_or_create_agent_config.remote(agent_config, update_config=True)
     
 @web_app.post("/get_chat_history")
 async def get_chat_history(agent_config: AgentConfig, credentials: str = Depends(authenticate)):
     print("Getting Chat History")
-    is_valid = check_agent_config(agent_config)
-    if not is_valid:
+    if not check_agent_config(agent_config):
         raise HTTPException(status_code=400, detail="Invalid agent configuration")
     return modal_agent.get_chat_history.remote(agent_config)
+
+@web_app.post("/append_chat_history")
+async def append_chat_history(agent_config: AgentConfig, credentials: str = Depends(authenticate)):
+    print("Appending Chat History")
+    if not check_agent_config(agent_config):
+        raise HTTPException(status_code=400, detail="Invalid agent configuration")
+    return modal_agent.append_chat_history.remote(agent_config)
                            
 @web_app.post("/delete_chat_history")
 async def delete_chat_history(agent_config: AgentConfig,credentials: str = Depends(authenticate)):
@@ -100,15 +101,11 @@ async def delete_message_pairs(agent_config: AgentConfig,credentials: str = Depe
         raise HTTPException(status_code=500, detail=str(e))
     
 @web_app.post("/prompt")
-async def prompt(agent_config:AgentConfig, token: str = Depends(authenticate)):
+async def prompt(agent_config:PromptConfig, token: str = Depends(authenticate)):
     
-    is_valid = check_agent_config(agent_config)
-    if not is_valid:
+    if not check_agent_config(agent_config):
         raise HTTPException(status_code=400, detail="Invalid agent configuration")
         
-    if agent_config:
-        if not agent_config.prompt:
-            raise HTTPException(status_code=400, detail="Prompt is required")
     print(f"POST /generate")
     def stream_generator():
         try:
@@ -118,7 +115,7 @@ async def prompt(agent_config:AgentConfig, token: str = Depends(authenticate)):
             yield f"\ndata: Error: {str(e)}\n\n"
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
     
-def check_agent_config(agent_config: AgentConfig) -> bool:
+def check_agent_config(agent_config: Union[AgentConfig, PromptConfig]) -> bool:
     """
     Check if essential agent configuration parameters are defined.
     Returns True if all required fields are present, False otherwise.
@@ -132,7 +129,10 @@ def check_agent_config(agent_config: AgentConfig) -> bool:
         missing_fields.append("workspace_id")
     if not agent_config.agent_id:
         missing_fields.append("agent_id")
-
+        
+    if isinstance(agent_config, PromptConfig) and not agent_config.prompt:
+        missing_fields.append("prompt")
+        
     if missing_fields:
         print(f"Warning: Missing required agent configuration fields: {', '.join(missing_fields)}")
         return False
@@ -141,7 +141,7 @@ def check_agent_config(agent_config: AgentConfig) -> bool:
     
 
 @app.function(
-    timeout=60 * 2,
+    timeout=60 * 5,
     container_idle_timeout=60 * 15,
     allow_concurrent_inputs=100,
     image=image,
