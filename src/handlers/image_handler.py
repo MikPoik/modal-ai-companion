@@ -58,7 +58,10 @@ class ImageHandler:
     def generate_image(self, prompt: str, agent_config: AgentConfig, folder: str = "images",preallocated_image_name:str = "") -> Optional[str]:
         """Generate an image and save it to the specified folder."""
         try:
-            if agent_config.image_config.provider == "getimg" or "https" not in agent_config.image_config.image_model:
+            if (agent_config.image_config.provider == "getimg" or "https" not in agent_config.image_config.image_model)\
+            and "flux-general-with-lora" not in agent_config.image_config.image_model \
+            and "SG161222/Realistic_Vision_V6.0_B1_noVAE" not in agent_config.image_config.image_model \
+            and "fal-ai/flux/dev" not in agent_config.image_config.image_model:
                 #print(f"Generating image with GetImg")
                 image_data = self._generate_with_getimg(prompt, agent_config)
                 if image_data:
@@ -118,12 +121,20 @@ class ImageHandler:
 
 
 
-        scheluder_config = "DPM++ 2M SDE"
+        scheluder_config = agent_config.image_config.scheduler
         negative_prompt = agent_config.image_config.negative_prompt
+        num_inference_steps = agent_config.image_config.num_inference_steps
+        model_architecture = agent_config.image_config.image_model_architecture
+        api_path = agent_config.image_config.image_api_path
+        
         if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models):
             scheluder_config = "Euler A"
+            num_inference_steps = "30"
             negative_prompt = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name"
 
+        if agent_config.image_config.image_model == "SG161222/Realistic_Vision_V6.0_B1_noVAE":
+            agent_config.image_config.image_api_path = "fal-ai/realistic-vision"
+            
         image_size = self.format_image_size(agent_config.image_config.image_size)
                 
 
@@ -132,7 +143,7 @@ class ImageHandler:
             "prompt": prompt,
             "model_name": agent_config.image_config.image_model,
             "negative_prompt": negative_prompt,
-            "num_inference_steps": agent_config.image_config.num_inference_steps,
+            "num_inference_steps": num_inference_steps,
             "guidance_scale": agent_config.image_config.guidance_scale,
             "image_size": image_size,
             "scheduler": scheluder_config,
@@ -143,8 +154,9 @@ class ImageHandler:
             "prompt_weighting": True,
             "num_images": 1,
         }
+        
         formatted_job_details = json.dumps(job_details, indent=4)
-        #print(f"Submitting job with details: {formatted_job_details}")
+        print(f"Submitting job with details: {formatted_job_details}")
         # Add optional loras if configured
         if agent_config.image_config.loras:
             job_details["loras"] = agent_config.image_config.loras
@@ -210,28 +222,36 @@ class ImageHandler:
         local_messages = messages.copy()
         prompt = textwrap.dedent(f"""\
         ## Instruction
-        Pause embodying character and revert to assistant mode.        
-        Task: Determine if a visual should be generated based on:
-        1. Direct image requests or
-        2. Visual implications in the conversation
-        Consider these scenarios:
-        1. Explicit requests: "Can you show me", "I want to see", "Send a photo", "Show me"
-        2. Implied requests: "What does it look like?", "I wish I could see that"
-        3. Actions related to images: "I'm taking a selfie", "Let me snap a picture", "sends a selfie"
-        4. Visual descriptions that warrant illustration: 
-           - Physical actions or gestures like "showing","revealing", "revealing"
-           - Changes in appearance or outfit
-        5. Emotionally significant moments that would benefit from visual representation
-        6. Setting or environment descriptions that create a strong visual picture
-        Review the following exchange:
-        Character's last message: "{messages[-1]['content']}"
-        Previous user message: "{messages[-2]['content']}"
-        Be sure to take in to account if the Character message contains suggestion for the visual.
+        Analyze if the conversation warrants visual generation based on these criteria:
+        1. Direct Visual Elements:
+           - Physical actions (showing, revealing, exposing)
+           - Gestures and body language expressing visual cues
+           - Changes in posture or stance
+           - Clothing descriptions or adjustments
+           - Facial expressions and emotional displays
+        2. Character Presentation:
+           - Flirtatious or seductive behavior
+           - Self-presentation moments
+           - Dramatic or theatrical actions
+           - Emotional expressions through body language
+           - Physical interactions or movements
+        3. Scene-Setting Elements:
+           - Detailed environmental descriptions
+           - Lighting changes or atmospheric details
+           - Character positioning or movement in space
+        4. Traditional Image Triggers:
+           - Direct requests ("show me", "send a picture")
+           - Implied requests ("what do I look like?")
+           - Photo-taking actions ("takes a selfie")
+        Review the last exchange carefully:
+
+        If the character is performing actions that create a strong visual scene, especially involving movement, poses, or emotional expression, respond with TRUE.
         Provide response as:
         {{
             "result": True/False,
-            "reasoning": "reasoning for True/False",
-            "visual_type": "request/implied"
+            "reasoning": "Brief explanation focusing on visual elements",
+            "visual_type": "action/request/implied/emotional",
+            "visual_focus": "character/scene/interaction"
         }}""").rstrip()
         #print(prompt)
         local_messages.append({"role": "user", "content": prompt})    
@@ -241,7 +261,8 @@ class ImageHandler:
                                                temperature=0.2,
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider,
-                                               stop_words=[',\n']):
+                                               stop_words=[',\n']
+                                              ):
             reasoning_response += token
         #print(f"Reasoning response: {reasoning_response}")
         if "true" in reasoning_response.lower():
@@ -266,50 +287,55 @@ class ImageHandler:
     
         local_messages = messages.copy()
         prompt_prefix = ""
-        prompt_suffix = "masterpiece ,realistic,skin texture,ultra detailed,highres, RAW,8k, selfie, self shot,depth of field"
+        prompt_suffix = ",masterpiece ,realistic,skin texture,ultra detailed,highres, RAW,8k,selfie, self shot,depth of field "
         if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models):
-            prompt_prefix = "masterpiece, best quality, very aesthetic, absurdres,selfie, self shot,depth of field "
+            negative_prompt_prefix="lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name,",
+            prompt_prefix = "masterpiece, best quality, very aesthetic, absurdres,"
+            prompt_suffix = ""
             
             
         prompt = textwrap.dedent(
         f"""\
         ## Instruction
-        Pause embodying character and revert to assistant mode.
-    
-        Imagine fitting image description keywords for an imaginary image of {agent_config.character.name}, with looks like {agent_config.character.appearance}.
-
-        Consider previous conversation and current context.
-        Give your response in the following object format with json array, write up to 20 detailed image description keywords here as list covering topics in order:
+        Analyze the conversation context and generate precise image description keywords from last character message.
+        
+        Focus points:
+        1. Character Identity: {agent_config.character.name}
+        2. Base Appearance: {agent_config.character.appearance}
+        3. Current Context: {agent_config.character.name}'s latest message and conversation flow
+        
+        Format response as a JSON object with the following categories:
         {{
-        "ImageDescriptionKeywords": [
-            {prompt_prefix}{agent_config.character.appearance},
-            Detailed Subject Looks (hair and eye color,clothes etc),
-            Action,
-            Context,
-            Body Features,
-            Posture,
-            Detailed Imagery,
-            Environment Description,
-            Mood/Atmosphere Description,
-            Style,
-            Style Execution (etc. {prompt_suffix})" )
-        ]
+            "ImageDescriptionKeywords": [
+                "Subject:detailed physical traits", // e.g. "Subject:hair,eye color,facial features,... ,body features,.."
+                "Expression:emotion", // e.g. "Expression:facial expression"
+                "Attire:clothing", // e.g. "Attire:detailed clothes,coloring,accessories"
+                "Pose:action", // e.g. "Pose:posture,movement,action"
+                "Setting:environment", // e.g. "Setting:indoor,outdoor""
+                "Lighting:condition", // e.g. "Lighting:style of lighting""
+                "Atmosphere:mood", // e.g. "Atmosphere:emotional atmosphere of image"
+                "Style:style execution", // e.g. "Style: {prompt_prefix}{prompt_suffix}"
+            ]
         }}
-    
-        Return only the json object, no other text is necessary.
-        ```json""").rstrip()
+        Guidelines:
+        - Use specific, descriptive keywords
+        - Maintain consistency with character's established traits
+        - Ensure keywords flow naturally together
+        - Focus on visual elements that can be rendered
+        
+        Return only the JSON object.""").rstrip()
         #print(prompt)
         image_description_response = ""
         local_messages.append({"role": "user", "content": prompt})
 
         for token in self.llm_handler.generate(local_messages,
                                                agent_config,
-                                               temperature=0.2,
+                                               temperature=0.4,
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider):
             image_description_response += token
     
-        image_prompt = self.parse_image_description(image_description_response.replace("```json","").replace("```","").strip())
+        image_prompt = self.parse_image_description(image_description_response.replace("```json","").replace("```","").replace("_"," ").replace("close-up","").replace("closeup","").strip())
         #print(image_prompt)    
         image_url = self.generate_image(image_prompt,agent_config,preallocated_image_name=preallocated_image_name)
         #print(image_url)
@@ -339,17 +365,7 @@ class ImageHandler:
                     for keyword in image_description_keywords
                 ]
                 image_description = ", ".join(cleaned_keywords)
-                image_description.replace("Detailed Subject Looks","")\
-                .replace("Detailed Imagery","")\
-                .replace("Environment Description","")\
-                .replace("Mood/Atmosphere Description","")\
-                .replace("Style","")\
-                .replace("Style Execution","")\
-                .replace("Posture","")\
-                .replace("Cropped","")\
-                .replace("Environment Description","")\
-                .replace("Body Features","")\
-                .replace("Action","")
+
     
                 image_description = remove_duplicate_words(image_description)
                 return image_description

@@ -42,6 +42,7 @@ async def authenticate(credentials: HTTPAuthorizationCredentials = Depends(http_
 @web_app.post("/generate_avatar")
 async def generate_avatar(
     agent_config:PromptConfig,credentials: str = Depends(authenticate)):
+    print("POST /generate_avatar")
     try:   
         avatar_url = modal_agent.generate_avatar.remote(agent_config)
         return avatar_url
@@ -51,49 +52,49 @@ async def generate_avatar(
 
 @web_app.post("/init_agent")
 async def init_agent(agent_config: AgentConfig, credentials: str = Depends(authenticate)):
-    print("Initializing Agent")
     if not check_agent_config(agent_config):
-        raise HTTPException(status_code=400, detail="Invalid agent configuration")
-    #print("agent_config", agent_config)
+        raise HTTPException(status_code=400, detail="Invalid agent configuration POST /init_agent")
+    print("POST /init_agent ", agent_config.context_id, agent_config.agent_id, agent_config.workspace_id)
     return modal_agent.get_or_create_agent_config.remote(agent_config, update_config=True)
     
 @web_app.post("/get_chat_history")
 async def get_chat_history(agent_config: AgentConfig, credentials: str = Depends(authenticate)):
-    print("Getting Chat History")
     if not check_agent_config(agent_config):
-        raise HTTPException(status_code=400, detail="Invalid agent configuration")
+        raise HTTPException(status_code=400, detail="Invalid agent configuration POST /get_chat_history")
+    print("POST /get_chat_history ", agent_config.context_id, agent_config.agent_id, agent_config.workspace_id)
     return modal_agent.get_chat_history.remote(agent_config)
 
 @web_app.post("/append_chat_history")
 async def append_chat_history(agent_config: AgentConfig, credentials: str = Depends(authenticate)):
-    print("Appending Chat History")
+    #TODO get messages from kwargs
+    messages = []
     if not check_agent_config(agent_config):
-        raise HTTPException(status_code=400, detail="Invalid agent configuration")
-    return modal_agent.append_chat_history.remote(agent_config)
+        raise HTTPException(status_code=400, detail="Invalid agent configuration POST /append_chat_history")
+    print("POST /append_chat_history ", agent_config.context_id, agent_config.agent_id, agent_config.workspace_id)
+    return modal_agent.append_chat_history.remote(agent_config,messages)
                            
 @web_app.post("/delete_chat_history")
 async def delete_chat_history(agent_config: AgentConfig,credentials: str = Depends(authenticate)):
-    print("Deleting chat history")
     is_valid = check_agent_config(agent_config)
     if not is_valid:
-        raise HTTPException(status_code=400, detail="Invalid agent configuration")
+        raise HTTPException(status_code=400, detail="Invalid agent configuration POST /delete_chat_history")
+    print("POST delete_chat_history ", agent_config.context_id, agent_config.agent_id, agent_config.workspace_id)
     return modal_agent.delete_chat_history.remote(agent_config)
 
 @web_app.post("/delete_workspace")
 async def delete_workspace(agent_config: AgentConfig,credentials: str = Depends(authenticate)):
-    print("Deleting workspace")
     is_valid = check_agent_config(agent_config)
     if not is_valid:
-        raise HTTPException(status_code=400, detail="Invalid agent configuration")
+        raise HTTPException(status_code=400, detail="Invalid agent configuration POST /delete_workspace")
+    print("POST delete_workspace ", agent_config.context_id, agent_config.agent_id,agent_config.workspace_id)
     return modal_agent.delete_workspace.remote(agent_config)
 
 @web_app.post("/delete_message_pairs")
 async def delete_message_pairs(agent_config: AgentConfig,credentials: str = Depends(authenticate)):
-    print("Deleting message pairs")
     is_valid = check_agent_config(agent_config)
     if not is_valid:
-        raise HTTPException(status_code=400, detail="Invalid agent configuration")
-        
+        raise HTTPException(status_code=400, detail="Invalid agent configuration POST /delete_message_pairs")
+    print("POST /delete_message_pairs ", agent_config.context_id, agent_config.agent_id, agent_config.workspace_id)
     try:
         result = modal_agent.delete_message_pairs.remote(agent_config, **agent_config.kwargs)
         return {"success": result}
@@ -104,9 +105,9 @@ async def delete_message_pairs(agent_config: AgentConfig,credentials: str = Depe
 async def prompt(agent_config:PromptConfig, token: str = Depends(authenticate)):
     
     if not check_agent_config(agent_config):
-        raise HTTPException(status_code=400, detail="Invalid agent configuration")
-        
-    print(f"POST /generate")
+        raise HTTPException(status_code=400, detail="Invalid agent configuration POST /prompt")
+    
+    print("POST /prompt ", agent_config.context_id, agent_config.agent_id, agent_config.workspace_id)
     def stream_generator():
         try:
             for token in modal_agent.run.remote_gen(agent_config):

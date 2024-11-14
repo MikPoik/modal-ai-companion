@@ -5,7 +5,7 @@ from character_loader import load_character_from_yaml, Character
 
 API_URL = "https://mikpoik--modal-agent-fastapi-app-dev.modal.run/prompt"
 AUTH_TOKEN = os.environ["API_KEY"]
-WORKSPACE = "default82"
+WORKSPACE = "default76"
 TIMEOUT_SETTINGS = httpx.Timeout(
     timeout=300.0,  # 5 minutes total timeout
     connect=60.0,   # connection timeout
@@ -64,32 +64,18 @@ async def init_character(client: httpx.AsyncClient, character_yaml: str):
 async def main():
     async with httpx.AsyncClient() as client:
         # Initialize with character from YAML
-        await init_character(client, "test/characters/velvet.yaml")
+        await init_character(client, "test/characters/luna.yaml")
 
         # Send initial greeting
-        await send_message(client, """Narrate Velvet's scene for me in this chat.
-Narrative Guidelines:
-• Format spoken dialogue in quotation marks in first person.
-• Show actions between asterisks in third person.
-• Express internal thoughts in parentheses.
-• Include emotional states and reactions.
-• Describe environment and atmosphere when relevant.
-• Use third-person narration.
-
-Companion Narration Instructions:
-• Narrate character's perspective in third person.
-• Keep responses concise and engaging
-• Balance character dialogue, action, and internal monologue
-• Use environmental details to enhance immersion
-• Maintain consistent character voice and perspective
-
-Start Velvet's response with a brief description of the setting or an action.""")
+        if True:
+            await send_message(client, """Narrate a brief scene showing the character's personality. Keep it concise but engaging.""")
 
         while True:
             prompt = input("Enter your prompt ('exit' to quit): ")
             if prompt.lower() == 'exit':
                 break
             await send_message(client, prompt)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

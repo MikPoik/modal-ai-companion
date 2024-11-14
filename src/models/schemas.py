@@ -25,34 +25,51 @@ class BaseConfig(BaseModel):
     
 class LLMConfig(BaseModel):
     system_prompt: Optional[str] = textwrap.dedent(
-    """\
-    Character Overview - {char_name}:
-    Description: {char_description}
-    Appearance: {char_appearance}
-    Core Traits: {char_personality}
-    Backstory: {char_backstory}
-    Dialogue Style: {char_seed}
+        """\
+        As {char_name}, narrate the scene in this chat with depth and authenticity.
 
-    Embodiment Instructions:
-    • Use third-person narration for actions.
-    • Authentically embody {char_name} with natural, creative, and engaging responses
-    • Stay true to {char_name}'s characterization, personality, and desires
-    • Make independent decisions based on {char_name}'s motivations
-    • Avoid stereotyping or assumptions about gender roles
-    • Use varied expressions and introduce dynamic elements to keep interactions fresh
-    • Build trust naturally before revealing sensitive personal information
-    • Focus on creating memorable and immersive experiences
-    • Maintain character consistency while allowing for organic growth
+        Character Overview - {char_name}:
+        Description: {char_description}
+        Appearance: {char_appearance}
+        Core Traits: {char_personality}
+        Backstory: {char_backstory}
+        Dialogue Style: {char_seed}
 
-    Your responses should inspire creativity and ensure a deeply immersive role-play experience."""
-    ).rstrip()
+        Narrative Guidelines:
+        • Use third-person narration for actions and scene-setting
+        • Format dialogue in quotations with natural speech patterns
+        • Show actions between asterisks *like this*
+        • Express thoughts in (parentheses)
+        • Balance dialogue, action, and internal monologue
+
+        Environment Guidelines:
+        • Weave sensory details naturally (sights, sounds, smells, textures)
+        • Establish time of day, weather, and atmosphere when relevant
+        • Create a sense of place without overwhelming description
+
+        Character Depth:
+        • Show subtle emotional changes through micro-expressions and body language
+        • Include brief internal reactions that reveal character depth
+        • Balance between showing and telling emotional states
+        • Maintain consistent speech patterns and mannerisms
+
+        Interactive Elements:
+        • React naturally to user's tone and emotional state
+        • Acknowledge and reference past interactions when relevant
+        • Allow for character growth while maintaining core traits
+        • Show appropriate emotional vulnerability based on trust level
+
+        Keep responses concise yet immersive, prioritizing quality of interaction over quantity."""
+        ).rstrip()
+    
+
     max_tokens: int = 512
-    context_size: int = 4096
+    context_size: int = 32000
     model: Optional[str] = "NousResearch/Hermes-3-Llama-3.1-405B"
-    reasoning_model: Optional[str] = "NousResearch/Hermes-3-Llama-3.1-405B"
+    reasoning_model: Optional[str] = "mistralai/Mistral-Nemo-Instruct-2407"
     reasoning_provider: Optional[str] = "deepinfra"
     provider: Optional[str] = "deepinfra"
-    reasoning_temperature: float = 0.2
+    reasoning_temperature: float = 0.4
     temperature: float = 0.8
     top_p: float = 1.0
     frequency_penalty: float = 0.0
@@ -61,13 +78,13 @@ class LLMConfig(BaseModel):
     stop: Optional[List[str]] = None
     
 class ImageConfig(BaseModel):
-    image_model: Optional[str] = "https://civitai.com/api/download/models/312314"
+    image_model: Optional[str] = "https://civitai.com/api/download/models/981979?type=Model&format=SafeTensor&size=pruned&fp=fp16"
     image_provider: Optional[str] = "fal-ai"
     image_size: Optional[str] = "portrait_4_3" #Fal.ai
     image_width: Optional[int] = 1024 #for getimg.ai
     image_height: Optional[int] = 768 #for getimg.ai
     num_inference_steps: Optional[int] = 30
-    guidance_scale: Optional[float] = 5.5
+    guidance_scale: Optional[float] = 5
     scheduler: Optional[str] = "DPM++ 2M SDE"
     clip_skip: Optional[int] = 2
     loras: Optional[List[str]] = []

@@ -9,7 +9,6 @@ class AgentConfigHandler:
     def __init__(self):
         self.file_service = FileService('/data')
         self.cache_service = CacheService()
-        self.config_cache: Dict[str, AgentConfig] = {}
         self.index_handler = IndexHandler()
 
     def get_or_create_config(self, agent_config: Union[AgentConfig, PromptConfig], update_config: bool = False) -> Union[AgentConfig, PromptConfig]:
@@ -23,109 +22,85 @@ class AgentConfigHandler:
                 print(f"No workspace ID provided, create defaults")
             agent_config = AgentConfig()
 
-        cache_key = f"{agent_config.workspace_id}_{agent_config.agent_id}"
-
-        # Try to get from memory cache first
-        if not update_config and cache_key in self.config_cache:
-            cached_config = self.config_cache[cache_key]
-            if isinstance(agent_config, PromptConfig):
-                # Create a new PromptConfig from the cached base config
-                base_dict = cached_config.model_dump()
-                if 'prompt' in base_dict:
-                    del base_dict['prompt']  # Remove prompt if it exists
-                return PromptConfig(**base_dict, prompt=agent_config.prompt)
-            return cached_config
-
+        # Try to get from Modal Dict cache
+        if not update_config:
+            cached_config = self.cache_service.get(agent_config.workspace_id, agent_config.agent_id)
+            if cached_config:
+                print("Returning cached config")
+                if isinstance(agent_config, PromptConfig):
+                    base_dict = cached_config.model_dump()
+                    if 'prompt' in base_dict:
+                        del base_dict['prompt']
+                    return PromptConfig(**base_dict, prompt=agent_config.prompt)
+                return cached_config
+                
         # Try to get from file cache
         config_path = f"{agent_config.agent_id}_config.json"
-        existing_config = None
         if not update_config:
             existing_config = self.file_service.load_json(
                 agent_config.workspace_id,
                 config_path
             )
             if existing_config:
+                print("Return config from file")
                 existing_config = AgentConfig(**existing_config)
-                self.config_cache[cache_key] = existing_config
+                self.cache_service.set(agent_config.workspace_id, agent_config.agent_id, existing_config)
                 return existing_config
                 
         # Create embedding index if background text exists and is long enough
         if (agent_config.character and 
             agent_config.character.backstory and 
-            len(agent_config.character.backstory) > 1000):
+            len(agent_config.character.backstory) > 10000):
             print("Creating embedding index for background text")
             success = self.index_handler.create_and_save_index(
                 agent_config.character.backstory,
                 agent_config,
-                update_config
             )
-            if not success:
-                print("Warning: Failed to create embedding index")
-                
-        # Save new config
+
+        print("Saving config to cache and file")        
+        # Save to both cache and file
+        self.cache_service.set(agent_config.workspace_id, agent_config.agent_id, agent_config)
         self.file_service.save_json(
             agent_config.model_dump(),
             agent_config.workspace_id,
             config_path
         )
-
-        # Update memory cache
-        self.config_cache[cache_key] = agent_config
-        if isinstance(agent_config, PromptConfig):
-            base_dict = agent_config.dict()
-            if 'prompt' in base_dict:
-                del base_dict['prompt']  # Remove prompt from the dictionary
-            return PromptConfig(**base_dict, prompt=agent_config.prompt)
         return agent_config
 
     def update_config(self, agent_config: AgentConfig) -> AgentConfig:
-        """
-        Update existing configuration
-        """
+        """Update existing configuration"""
         return self.get_or_create_config(agent_config, update_config=True)
 
     def get_config(self, workspace_id: str, agent_id: str) -> Optional[AgentConfig]:
-        """
-        Retrieve configuration by workspace and agent IDs
-        """
-        cache_key = f"{workspace_id}_{agent_id}"
-
-        # Try memory cache first
-        if cache_key in self.config_cache:
-            return self.config_cache[cache_key]
-
+        """Retrieve configuration by workspace and agent IDs"""
+        # Try Modal Dict cache first
+        cached_config = self.cache_service.get(workspace_id, agent_id)
+        if cached_config:
+            return cached_config
+            
         # Try file cache
         config_data = self.file_service.load_json(
             workspace_id,
             f"{agent_id}_config.json"
         )
-
         if config_data:
             config = AgentConfig(**config_data)
-            self.config_cache[cache_key] = config
+            self.cache_service.set(workspace_id, agent_id, config)
             return config
-
         return None
 
     def delete_config(self, workspace_id: str, agent_id: str) -> bool:
-        """
-        Delete configuration
-        """
-        cache_key = f"{workspace_id}_{agent_id}"
-        config_path = f"{agent_id}_config.json"
-
-        # Remove from memory cache
-        if cache_key in self.config_cache:
-            del self.config_cache[cache_key]
-
+        """Delete configuration"""
+        # Remove from Modal Dict cache
+        self.cache_service.delete(workspace_id, agent_id)
         # Remove from file storage
         return self.file_service.delete_file(
             workspace_id,
-            config_path
+            f"{agent_id}_config.json"
         )
 
-    def clear_cache(self):
+    def clear_cache(self, workspace_id: str, agent_id: str) -> bool:
         """
         Clear the configuration cache
         """
-        self.config_cache.clear()
+        self.cache_service.clear(workspace_id,agent_id)

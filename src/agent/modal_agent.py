@@ -8,7 +8,7 @@ from src.handlers.agent_config_handler import AgentConfigHandler
 from src.services.file_service import FileService
 from src.services.cache_service import CacheService
 from typing import Generator, Optional, Dict, Union
-from src.gcp_constants import GCP_PUBLIC_IMAGE_BUCKET, GCP_CHAT_BUCKET
+from src.gcp_constants import GCP_PUBLIC_IMAGE_BUCKET, GCP_CHAT_BUCKET,gcp_hmac_secret
 import json
 
 agent_image = (
@@ -34,11 +34,7 @@ with agent_image.imports():
     import textwrap
     from openai import OpenAI
 
-# Define secrets and mounts
-gcp_hmac_secret = modal.Secret.from_name(
-"gcp-secret-prod",
-required_keys=["GOOGLE_ACCESS_KEY_ID", "GOOGLE_ACCESS_KEY_SECRET"]
-)
+
 
 @app.cls(
 timeout=60 * 5,
@@ -86,7 +82,7 @@ class ModalAgent:
     def get_or_create_agent_config(self, agent_config: Union[AgentConfig, PromptConfig], update_config: bool = False) -> Union[AgentConfig, PromptConfig]:
         """Handle agent configuration management"""
         base_config = self.config_manager.get_or_create_config(agent_config, update_config)
-
+        #print("Modal agent agent config: ", base_config.context_id, base_config.agent_id, base_config.workspace_id)
         if isinstance(agent_config, PromptConfig):
             # If input is PromptConfig, ensure we maintain the prompt field
             base_dict = base_config.model_dump()
@@ -106,6 +102,7 @@ class ModalAgent:
         try:
             # Get or create agent configuration
             agent_config = self.get_or_create_agent_config.local(agent_config) 
+            #print("Modal agent RUN: ", agent_config.context_id, agent_config.agent_id,agent_config.workspace_id)
             if not isinstance(agent_config, PromptConfig):
                 print("Not PromptConfig")
             # Get chat history and prepare messages
@@ -117,7 +114,6 @@ class ModalAgent:
             messages_without_image = None
             if agent_config.enable_image_generation:
                 messages_without_image = self.chat_handler.remove_image_messages(messages)
-                
             llm_response = ""
             # Generate response using LLM
             for token in self.llm_handler.generate(messages_without_image or messages, agent_config):
@@ -132,12 +128,12 @@ class ModalAgent:
             
             # Generate image if enabled
             if agent_config.enable_image_generation:
-                is_image_request, preallocated_image_name, public_url = self.image_handler.check_for_image_request(messages, agent_config)
+                is_image_request, preallocated_image_name, public_url = self.image_handler.check_for_image_request(self.chat_handler.remove_image_messages(messages), agent_config)
                 #print("Is imaging request:", is_image_request)
-                if is_image_request:
-                    
+                if is_image_request:                    
                     yield f"![image]({public_url})" 
-                    image_url = self.image_handler.request_image_generation(messages, agent_config, preallocated_image_name)
+
+                    image_url = self.image_handler.request_image_generation(self.chat_handler.keep_last_image_message(messages), agent_config, preallocated_image_name)
 
                     if image_url:
                         print("Image generated successfully, url: "+image_url)
@@ -153,12 +149,13 @@ class ModalAgent:
     
         except Exception as e:
             print(f"Error in run method: {str(e)}")
-            yield f"Error: {str(e)}"
+            #yield f"Error: {str(e)}"
 
     @modal.method()
     def delete_chat_history(self, agent_config: AgentConfig) -> bool:
         """Delete chat history for the given agent configuration."""
         try:
+            #print(f"Deleting chat history for agent config: {agent_config.context_id} {agent_config.agent_id}, {agent_config.workspace_id}")
             return self.chat_handler.delete_chat_history(agent_config)
         except Exception as e:
             print(f"Error deleting chat history: {str(e)}")
@@ -178,7 +175,7 @@ class ModalAgent:
             )
     
             # Clear any cached configurations
-            self.config_manager.clear_cache()
+            self.config_manager.clear_cache(agent_config.workspace_id, agent_config.agent_id)
     
             return chat_deleted and config_deleted
         except Exception as e:
@@ -217,6 +214,7 @@ class ModalAgent:
     def get_chat_history(self, agent_config: AgentConfig) -> List[Dict]:
         """Get chat history for the given agent configuration."""
         try:
+            #print(f"Getting chat history for agent config: {agent_config.context_id} {agent_config.agent_id}, {agent_config.workspace_id}")
             # Get agent config first to ensure it exists and is up to date
             agent_config = self.get_or_create_agent_config.local(agent_config)
     
@@ -232,11 +230,12 @@ class ModalAgent:
     @modal.method()
     def append_chat_history(self, agent_config: AgentConfig, messages: List[Dict]) -> bool:
         try:
+            #print(f"Appending chat history for agent config: {agent_config.context_id} {agent_config.agent}, {agent_config.workspace_id}")
             # Get agent config first to ensure it exists and is up to date
             agent_config = self.get_or_create_agent_config.local(agent_config)
     
             # Use the chat handler to append messages to chat history
-            self.chat_handler.append_chat_history(agent_config, messages)
+            self.chat_handler.append_chat_history(messages,agent_config)
             return True
         except Exception as e:
             print(f"Error appending chat history: {str(e)}")

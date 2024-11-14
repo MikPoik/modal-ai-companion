@@ -119,12 +119,19 @@ class ChatHandler:
         return self.file_service.delete_file(agent_config.workspace_id, filename)
 
     def remove_image_messages(self, messages: List[dict]) -> List[dict]:
-        """Remove messages that contain markdown image syntax from chat history."""
-        def contains_image_markdown(content: str) -> bool:
-            import re
-            pattern = r'!\[.*?\]\(.*?\)'
-            return bool(re.search(pattern, content))
+        """Remove messages that contain image tag from chat history."""
+
         return [
             msg for msg in messages 
             if msg.get('tag') != 'image'
+        ]
+
+    def keep_last_image_message(self, messages: List[dict]) -> List[dict]:
+        """Keep the last image in chat history but remove all prior ones."""
+        
+        last_image_index = next((i for i in reversed(range(len(messages))) if messages[i].get('tag') == 'image'), None)
+        
+        return [
+            msg for i, msg in enumerate(messages)
+            if msg.get('tag') != 'image' or i == last_image_index
         ]

@@ -21,13 +21,13 @@ class FileService:
 
     def save_json(self, data: Any, workspace_id: str, filename: str):
         path = self.get_path(workspace_id, filename)
-        print(f"Saving JSON to {path}")
+        print(f"Saving JSON to {path}\n")
         with path.open('w') as f:
             json.dump(data, f)
 
     def load_json(self, workspace_id: str, filename: str) -> Optional[dict]:
         path = self.get_path(workspace_id, filename)
-        print(f"Loading JSON from {path}")
+        print(f"Loading JSON from {path}\n")
         if path.exists():
             with path.open('r') as f:
                 return json.load(f)
