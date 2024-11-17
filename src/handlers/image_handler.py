@@ -10,6 +10,7 @@ from src.services.file_service import FileService
 import textwrap
 import shortuuid
 import base64
+import re
 
 euler_a_models = [ "156375","286821","303526","378499","293564","384264" ]
 
@@ -156,26 +157,28 @@ class ImageHandler:
         }
         
         formatted_job_details = json.dumps(job_details, indent=4)
-        print(f"Submitting job with details: {formatted_job_details}")
+        #print(f"Submitting job with details: {formatted_job_details}")
         # Add optional loras if configured
         if agent_config.image_config.loras:
             job_details["loras"] = agent_config.image_config.loras
-        
-        try:
-            response = requests.post(
-                f"{self.base_url}/{agent_config.image_config.image_api_path}",
-                headers=headers,
-                json=job_details
-            )
-            response.raise_for_status()
-            return response.json().get("status_url")
 
-        except requests.exceptions.RequestException as e:
-            print(f"Error submitting job: {str(e)}")
-            return None
-        except json.JSONDecodeError as e:
-            print(f"Error decoding response: {str(e)}")
-            return None
+        if len(prompt) > 10:
+            try:
+                response = requests.post(
+                    f"{self.base_url}/{agent_config.image_config.image_api_path}",
+                    headers=headers,
+                    json=job_details
+                )
+                response.raise_for_status()
+                return response.json().get("status_url")
+    
+            except requests.exceptions.RequestException as e:
+                print(f"Error submitting job: {str(e)}")
+                return None
+            except json.JSONDecodeError as e:
+                print(f"Error decoding response: {str(e)}")
+                return None
+        return None
 
     def _check_status_and_download_image(self, status_url: str) -> Optional[str]:
         """Check job status and return image URL when complete."""
@@ -221,38 +224,49 @@ class ImageHandler:
     
         local_messages = messages.copy()
         prompt = textwrap.dedent(f"""\
-        ## Instruction
-        Analyze if the conversation warrants visual generation based on these criteria:
-        1. Direct Visual Elements:
-           - Physical actions (showing, revealing, exposing)
-           - Gestures and body language expressing visual cues
-           - Changes in posture or stance
-           - Clothing descriptions or adjustments
-           - Facial expressions and emotional displays
-        2. Character Presentation:
-           - Flirtatious or seductive behavior
-           - Self-presentation moments
-           - Dramatic or theatrical actions
-           - Emotional expressions through body language
-           - Physical interactions or movements
-        3. Scene-Setting Elements:
-           - Detailed environmental descriptions
-           - Lighting changes or atmospheric details
-           - Character positioning or movement in space
-        4. Traditional Image Triggers:
-           - Direct requests ("show me", "send a picture")
-           - Implied requests ("what do I look like?")
-           - Photo-taking actions ("takes a selfie")
-        Review the last exchange carefully:
+    ## Instruction
+    Analyze if the last user and character message warrants visual generation based on these criteria:
+    
+    1. Visual Changes:
+       - Outfit changes or significant wardrobe adjustments
+       - Physical transformations or appearance changes
+       - Clear showing/revealing actions ("shows", "reveals", "displays")
+       - Dramatic poses or intentional presentation
 
-        If the character is performing actions that create a strong visual scene, especially involving movement, poses, or emotional expression, respond with TRUE.
-        Provide response as:
-        {{
-            "result": True/False,
-            "reasoning": "Brief explanation focusing on visual elements",
-            "visual_type": "action/request/implied/emotional",
-            "visual_focus": "character/scene/interaction"
-        }}""").rstrip()
+    2. Character Actions:
+       - Intentional display or presentation
+       - Taking photos or selfies
+       - Meaningful changes in expression or pose
+       - Dramatic or theatrical actions
+    AND
+    
+    3. User Requests/Interest:
+       - Direct requests ("show me", "send a picture")
+       - Suggestive requests ("I wonder what you look like right now")
+       - Implied interest ("You must look beautiful in that")
+       - Questions about appearance or attire
+    
+
+    
+    Do NOT trigger for:
+    - Casual gestures or minor movements
+    - Basic conversational actions
+    - Generic scene descriptions
+    - Subtle mood changes
+    
+    Review the last message from user and character and respond with TRUE only if there are notable visual elements AND user interest in appearance.
+    
+    User: {local_messages[-2]['content']}
+    Character: {local_messages[-1]['content']}
+    
+    Format response as:
+    {{
+        "result": True/False,
+        "reasoning": "Brief explanation of the visual trigger, user and character",
+        "visual_type": "outfit_change/user_request/character_action/implied_request",
+        "trigger_phrase": "Quote the relevant triggering phrase or action, user and character"
+    }}"
+    }}""").rstrip()
         #print(prompt)
         local_messages.append({"role": "user", "content": prompt})    
     
@@ -264,7 +278,7 @@ class ImageHandler:
                                                stop_words=[',\n']
                                               ):
             reasoning_response += token
-        #print(f"Reasoning response: {reasoning_response}")
+        print(f"Reasoning response: {reasoning_response}")
         if "true" in reasoning_response.lower():
             preallocated_name, public_url = self.file_service.generate_preallocated_url(agent_config, "images")
             return True, preallocated_name, public_url
@@ -287,97 +301,73 @@ class ImageHandler:
     
         local_messages = messages.copy()
         prompt_prefix = ""
-        prompt_suffix = ",masterpiece ,realistic,skin texture,ultra detailed,highres, RAW,8k,selfie, self shot,depth of field "
+        prompt_suffix = ",masterpiece ,realistic,skin texture,ultra detailed,highres, RAW,8k, selfie, self shot,depth of field "
         if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models):
             negative_prompt_prefix="lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name,",
             prompt_prefix = "masterpiece, best quality, very aesthetic, absurdres,"
             prompt_suffix = ""
             
             
-        prompt = textwrap.dedent(
-        f"""\
-        ## Instruction
-        Analyze the conversation context and generate precise image description keywords from last character message.
-        
-        Focus points:
-        1. Character Identity: {agent_config.character.name}
-        2. Base Appearance: {agent_config.character.appearance}
-        3. Current Context: {agent_config.character.name}'s latest message and conversation flow
-        
-        Format response as a JSON object with the following categories:
-        {{
-            "ImageDescriptionKeywords": [
-                "Subject:detailed physical traits", // e.g. "Subject:hair,eye color,facial features,... ,body features,.."
-                "Expression:emotion", // e.g. "Expression:facial expression"
-                "Attire:clothing", // e.g. "Attire:detailed clothes,coloring,accessories"
-                "Pose:action", // e.g. "Pose:posture,movement,action"
-                "Setting:environment", // e.g. "Setting:indoor,outdoor""
-                "Lighting:condition", // e.g. "Lighting:style of lighting""
-                "Atmosphere:mood", // e.g. "Atmosphere:emotional atmosphere of image"
-                "Style:style execution", // e.g. "Style: {prompt_prefix}{prompt_suffix}"
-            ]
-        }}
-        Guidelines:
-        - Use specific, descriptive keywords
-        - Maintain consistency with character's established traits
-        - Ensure keywords flow naturally together
-        - Focus on visual elements that can be rendered
-        
-        Return only the JSON object.""").rstrip()
-        #print(prompt)
+        prompt = f"""Generate image description keywords as a JSON object.
+Include keywords that describe:
+- Character: Character's physical appearance and current expression
+- Actions: Notable actions or poses
+- Setting: Setting and environment
+- Lightning: Lighting and atmosphere
+- Atmosphere: Atmospheric effects
+- Visual Elements: Important visual elements from the current context
+- Quality Details: Quality details (resolution, style)
+
+Describe image for {agent_config.character.name}'s message: {local_messages[-1]['content']}
+
+Return ONLY a JSON object, like this format:
+{{
+  "Character": "description here",
+  "Actions": "actions here",
+  "Setting": "setting here",
+  "Lighting": "lighting details",
+  "Atmosphere": "atmosphere details",
+  "Visual Elements": "visual elements",
+  "Quality Details": "quality details"
+}}""".rstrip()
         image_description_response = ""
         local_messages.append({"role": "user", "content": prompt})
-
+        
         for token in self.llm_handler.generate(local_messages,
                                                agent_config,
-                                               temperature=0.4,
+                                               temperature=0.2,
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider):
             image_description_response += token
-    
-        image_prompt = self.parse_image_description(image_description_response.replace("```json","").replace("```","").replace("_"," ").replace("close-up","").replace("closeup","").strip())
-        #print(image_prompt)    
+        print(image_description_response)
+        image_prompt = self.parse_image_description(image_description_response).strip()
         image_url = self.generate_image(image_prompt,agent_config,preallocated_image_name=preallocated_image_name)
         #print(image_url)
         if image_url:
             return f"![{image_prompt}]({image_url})"
         return None
     
-    def parse_image_description(self,image_description_response:str):
     
-        def remove_duplicate_words(text):
-            # Split the text into words
-            words = text.split()
-            # Use a dictionary to preserve order and remove duplicates
-            unique_words = dict.fromkeys(words)
-            # Join the unique words back into a string
-            return " ".join(unique_words)
-    
+    def parse_image_description(self, image_description_response: str) -> str:
         try:
-    
-            image_description_data = json.loads(image_description_response.strip())
-            
-            if "ImageDescriptionKeywords" in image_description_data:
-                # Extract the values and remove keys if present
-                image_description_keywords = image_description_data["ImageDescriptionKeywords"]
-                cleaned_keywords = [
-                    keyword.split(":", 1)[1].strip() if ":" in keyword else keyword
-                    for keyword in image_description_keywords
-                ]
-                image_description = ", ".join(cleaned_keywords)
+            # Clean up the response
+            cleaned_response = image_description_response.replace("```json", "").replace("```", "").strip()
+
+            # Parse JSON object
+            data = json.loads(cleaned_response)
+
+            # Extract all values and join them
+            result = []
+            for value in data.values():
+                if value and isinstance(value, str):
+                    result.append(value.strip())
+
+            return ", ".join(result)
+        except Exception as e:
+            print(f"Error parsing image description: {str(e)}")
+            return image_description_response
 
     
-                image_description = remove_duplicate_words(image_description)
-                return image_description
-        except json.JSONDecodeError:
-            print(f"Failed to parse image description JSON. {image_description_response}")
-            return image_description_response.strip()
-            #return None
-        except Exception:
-            print(f"Malformed response. {image_description_response}")
-            return image_description_response.strip()
-        return image_description_response
-
     def format_messages_to_display(self,local_messages: list) -> str:
         formatted_messages = []
         for msg in local_messages:

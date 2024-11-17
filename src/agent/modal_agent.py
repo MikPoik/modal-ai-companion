@@ -133,7 +133,7 @@ class ModalAgent:
                 if is_image_request:                    
                     yield f"![image]({public_url})" 
 
-                    image_url = self.image_handler.request_image_generation(self.chat_handler.keep_last_image_message(messages), agent_config, preallocated_image_name)
+                    image_url = self.image_handler.request_image_generation(self.chat_handler.remove_image_messages(messages), agent_config, preallocated_image_name)
 
                     if image_url:
                         print("Image generated successfully, url: "+image_url)

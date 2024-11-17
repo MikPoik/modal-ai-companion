@@ -5,7 +5,9 @@ from character_loader import load_character_from_yaml, Character
 
 API_URL = "https://mikpoik--modal-agent-fastapi-app-dev.modal.run/prompt"
 AUTH_TOKEN = os.environ["API_KEY"]
-WORKSPACE = "default76"
+WORKSPACE = "default704"
+AGENT_ID = "agent-4"
+CONTEXT_ID = "context-4"
 TIMEOUT_SETTINGS = httpx.Timeout(
     timeout=300.0,  # 5 minutes total timeout
     connect=60.0,   # connection timeout
@@ -22,8 +24,8 @@ async def send_message(client: httpx.AsyncClient, message: str, workspace_id: st
     data = {
         "prompt": message,
         "workspace_id": workspace_id,
-        "context_id": "default2",
-        "agent_id": "default2",
+        "context_id": CONTEXT_ID,
+        "agent_id": AGENT_ID,
     }
 
     try:
@@ -48,8 +50,8 @@ async def init_character(client: httpx.AsyncClient, character_yaml: str):
     }
 
     agent_config = {
-        "context_id": "default2",
-        "agent_id": "default2",
+        "context_id": CONTEXT_ID,
+        "agent_id": AGENT_ID,
         "workspace_id": WORKSPACE,
         "character": character.to_dict()
     }
@@ -64,7 +66,7 @@ async def init_character(client: httpx.AsyncClient, character_yaml: str):
 async def main():
     async with httpx.AsyncClient() as client:
         # Initialize with character from YAML
-        await init_character(client, "test/characters/luna.yaml")
+        await init_character(client, "test/characters/velvet.yaml")
 
         # Send initial greeting
         if True:

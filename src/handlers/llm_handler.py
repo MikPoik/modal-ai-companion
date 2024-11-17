@@ -49,9 +49,12 @@ class LLMHandler:
 
         if agent_config.llm_config.model in together_ai_models:
             provider = "togetherai"
-
+            
+        if provider and provider in together_ai_models:
+            provider = "togetherai"
+            
         self.client = self.initialize_client(provider or agent_config.llm_config.provider)
-
+        
         try:
             response = self.client.chat.completions.create(
                 model=model or agent_config.llm_config.model,

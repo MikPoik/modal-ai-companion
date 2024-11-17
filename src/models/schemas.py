@@ -37,10 +37,11 @@ class LLMConfig(BaseModel):
 
         Narrative Guidelines:
         • Use third-person narration for actions and scene-setting
-        • Format dialogue in quotations with natural speech patterns
+        • Format dialogue in quotations with natural speech patterns "like this"
         • Show actions between asterisks *like this*
-        • Express thoughts in (parentheses)
+        • Express {char_name}'s thoughts in (parentheses)
         • Balance dialogue, action, and internal monologue
+        • Avoid nesting dialogue or action
 
         Environment Guidelines:
         • Weave sensory details naturally (sights, sounds, smells, textures)
@@ -66,8 +67,8 @@ class LLMConfig(BaseModel):
     max_tokens: int = 512
     context_size: int = 32000
     model: Optional[str] = "NousResearch/Hermes-3-Llama-3.1-405B"
-    reasoning_model: Optional[str] = "mistralai/Mistral-Nemo-Instruct-2407"
-    reasoning_provider: Optional[str] = "deepinfra"
+    reasoning_model: Optional[str] = "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO"
+    reasoning_provider: Optional[str] = "togetherai"
     provider: Optional[str] = "deepinfra"
     reasoning_temperature: float = 0.4
     temperature: float = 0.8
@@ -84,7 +85,7 @@ class ImageConfig(BaseModel):
     image_width: Optional[int] = 1024 #for getimg.ai
     image_height: Optional[int] = 768 #for getimg.ai
     num_inference_steps: Optional[int] = 30
-    guidance_scale: Optional[float] = 5
+    guidance_scale: Optional[float] = 5.5
     scheduler: Optional[str] = "DPM++ 2M SDE"
     clip_skip: Optional[int] = 2
     loras: Optional[List[str]] = []
