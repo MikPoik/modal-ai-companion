@@ -278,7 +278,7 @@ class ImageHandler:
                                                stop_words=[',\n']
                                               ):
             reasoning_response += token
-        print(f"Reasoning response: {reasoning_response}")
+        #print(f"Reasoning response: {reasoning_response}")
         if "true" in reasoning_response.lower():
             preallocated_name, public_url = self.file_service.generate_preallocated_url(agent_config, "images")
             return True, preallocated_name, public_url
@@ -301,7 +301,7 @@ class ImageHandler:
     
         local_messages = messages.copy()
         prompt_prefix = ""
-        prompt_suffix = ",masterpiece ,realistic,skin texture,ultra detailed,highres, RAW,8k, selfie, self shot,depth of field "
+        prompt_suffix = "self shot,depth of field "
         if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models):
             negative_prompt_prefix="lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name,",
             prompt_prefix = "masterpiece, best quality, very aesthetic, absurdres,"
@@ -309,14 +309,16 @@ class ImageHandler:
             
             
         prompt = f"""Generate image description keywords as a JSON object.
+Character appearance: {agent_config.character.appearance}
 Include keywords that describe:
 - Character: Character's physical appearance and current expression
 - Actions: Notable actions or poses
+- Visual Elements: Important visual elements from the current context
 - Setting: Setting and environment
 - Lightning: Lighting and atmosphere
 - Atmosphere: Atmospheric effects
-- Visual Elements: Important visual elements from the current context
-- Quality Details: Quality details (resolution, style)
+
+- Quality Details: Quality details (resolution, style e.g. {prompt_prefix}{prompt_suffix})
 
 Describe image for {agent_config.character.name}'s message: {local_messages[-1]['content']}
 
@@ -324,10 +326,10 @@ Return ONLY a JSON object, like this format:
 {{
   "Character": "description here",
   "Actions": "actions here",
+  "Visual Elements": "visual elements",
   "Setting": "setting here",
   "Lighting": "lighting details",
   "Atmosphere": "atmosphere details",
-  "Visual Elements": "visual elements",
   "Quality Details": "quality details"
 }}""".rstrip()
         image_description_response = ""
@@ -339,7 +341,7 @@ Return ONLY a JSON object, like this format:
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider):
             image_description_response += token
-        print(image_description_response)
+        #print(image_description_response)
         image_prompt = self.parse_image_description(image_description_response).strip()
         image_url = self.generate_image(image_prompt,agent_config,preallocated_image_name=preallocated_image_name)
         #print(image_url)
