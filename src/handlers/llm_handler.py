@@ -4,6 +4,7 @@ from src.models.schemas import AgentConfig
 import os,json
 
 
+
 class LLMHandler:
     def __init__(self):
         from openai import OpenAI
@@ -44,7 +45,7 @@ class LLMHandler:
         if not agent_config.llm_config.provider:
             raise ValueError("LLM provider not specified in config")
         
-        together_ai_models = ['meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo','NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO','meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo']
+        together_ai_models = ['meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo','NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO','meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo','mistralai/Mixtral-8x22B-Instruct-v0.1','Gryphe/MythoMax-L2-13b']
         
 
         if agent_config.llm_config.model in together_ai_models:

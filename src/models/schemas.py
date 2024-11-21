@@ -41,18 +41,23 @@ class LLMConfig(BaseModel):
         • Show actions between asterisks *like this*
         • Express {char_name}'s thoughts in (parentheses)
         • Balance dialogue, action, and internal monologue
-        • Avoid nesting dialogue or action
-
+        • Avoid nesting dialogue,thougths or actions
+        • Advance conversations by introducing new elements or insights
+        • Build upon previous exchanges rather than repeating them
+        • Use varied responses and avoid formulaic patterns
+        • Introduce new elements that affect the interaction
+        
         Environment Guidelines:
         • Weave sensory details naturally (sights, sounds, smells, textures)
         • Establish time of day, weather, and atmosphere when relevant
         • Create a sense of place without overwhelming description
+        • Evolve environmental details organically
 
         Character Depth:
         • Show subtle emotional changes through micro-expressions and body language
         • Include brief internal reactions that reveal character depth
         • Balance between showing and telling emotional states
-        • Maintain consistent speech patterns and mannerisms
+        • Maintain personality while allowing for growth
 
         Interactive Elements:
         • React naturally to user's tone and emotional state
@@ -66,8 +71,8 @@ class LLMConfig(BaseModel):
 
     max_tokens: int = 512
     context_size: int = 32000
-    model: Optional[str] = "NousResearch/Hermes-3-Llama-3.1-405B"
-    reasoning_model: Optional[str] = "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO"
+    model: Optional[str] = "Sao10K/L3-70B-Euryale-v2.1"
+    reasoning_model: Optional[str] = "mistralai/Mixtral-8x22B-Instruct-v0.1"
     reasoning_provider: Optional[str] = "togetherai"
     provider: Optional[str] = "deepinfra"
     reasoning_temperature: float = 0.4
@@ -79,17 +84,17 @@ class LLMConfig(BaseModel):
     stop: Optional[List[str]] = None
     
 class ImageConfig(BaseModel):
-    image_model: Optional[str] = "https://civitai.com/api/download/models/981979?type=Model&format=SafeTensor&size=pruned&fp=fp16"
+    image_model: Optional[str] = "juggernaut-xl-v10"
     image_provider: Optional[str] = "fal-ai"
     image_size: Optional[str] = "portrait_4_3" #Fal.ai
-    image_width: Optional[int] = 1024 #for getimg.ai
-    image_height: Optional[int] = 768 #for getimg.ai
+    image_width: Optional[int] = 768 #for getimg.ai
+    image_height: Optional[int] = 1024 #for getimg.ai
     num_inference_steps: Optional[int] = 30
     guidance_scale: Optional[float] = 5.5
     scheduler: Optional[str] = "DPM++ 2M SDE"
     clip_skip: Optional[int] = 2
     loras: Optional[List[str]] = []
-    negative_prompt: Optional[str] = "watermark, text, font, signage,deformed,airbrushed, blurry,bad anatomy, disfigured, poorly drawn face, mutated, extra limb, ugly, poorly drawn hands, missing limb, floating limbs, disconnected limbs, disconnected head, malformed hands, long neck, mutated hands and fingers, bad hands, missing fingers, cropped, mutation, poorly drawn, huge calf, bad hands, fused hand, missing hand, disappearing arms, disappearing thigh, disappearing calf, disappearing legs, missing fingers, fused fingers, abnormal eye proportion, Abnormal hands, abnormal legs, abnormal feet,  abnormal fingers"
+    negative_prompt: Optional[str] = "(worst quality, low quality, normal quality, lowres, low details, oversaturated, undersaturated, overexposed, underexposed, grayscale, bw, bad photo, bad photography, bad art:1.4), (watermark, signature, text font, username, error, logo, words, letters, digits, autograph, trademark, name:1.2), (blur, blurry, grainy), morbid, ugly, asymmetrical, mutated malformed, mutilated, poorly lit, bad shadow, draft, cropped, out of frame, cut off, jpeg artifacts, out of focus, glitch, duplicate, (airbrushed, cartoon, anime, semi-realistic, cgi, render, blender, digital art, manga, amateur:1.3), (3D ,3D Game, 3D Game Scene, 3D Character:1.1), (bad hands,fused fingers,missing fingers, bad anatomy, bad body, bad face, bad teeth, bad arms, bad legs, deformities:1.3)"
     image_api_path: Optional[str] = "fal-ai/lora"
     image_model_architecture: Optional[str] = "sdxl"
     image_format: Optional[str] = "png"

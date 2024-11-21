@@ -1,13 +1,14 @@
 import httpx
 import asyncio
 import os
+import shortuuid
 from character_loader import load_character_from_yaml, Character
 
 API_URL = "https://mikpoik--modal-agent-fastapi-app-dev.modal.run/prompt"
 AUTH_TOKEN = os.environ["API_KEY"]
 WORKSPACE = "default704"
-AGENT_ID = "agent-7"
-CONTEXT_ID = "context-7"
+AGENT_ID = shortuuid.uuid()
+CONTEXT_ID = AGENT_ID
 TIMEOUT_SETTINGS = httpx.Timeout(
     timeout=300.0,  # 5 minutes total timeout
     connect=60.0,   # connection timeout
@@ -70,7 +71,7 @@ async def main():
 
         # Send initial greeting
         if True:
-            await send_message(client, """As Character, Narrate a brief introduction scene showing the character's personality. Keep it concise but engaging.""")
+            await send_message(client, """Narrate a brief introduction scene with me,showing the character's personality. Keep it concise but engaging. Stay in character. Start with dialogue or actions. Progress at slow pace.""")
 
         while True:
             prompt = input("Enter your prompt ('exit' to quit): ")

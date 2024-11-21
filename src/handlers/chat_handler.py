@@ -4,7 +4,10 @@ from src.models.schemas import AgentConfig
 from src.services.file_service import FileService
 from src.handlers.index_handler import IndexHandler
 
+models_4k_context = ["lizpreciatior/lzlv_70b_fp16_hf","Gryphe/MythoMax-L2-13b"]
+
 class ChatHandler:
+
     def __init__(self):
         import shortuuid
         self.file_service = FileService('/bucket-mount')
@@ -35,9 +38,14 @@ class ChatHandler:
         # Add the user's prompt
         messages.append({"tag":"text","role": "user", "content": prompt})
         # Filter messages to fit context window
+        max_context_size = agent_config.llm_config.context_size
+        
+        if agent_config.llm_config.model in models_4k_context:
+            max_context_size = 4096
+            
         return self.filter_messages_for_context(
             messages, 
-            max_context_size=agent_config.llm_config.context_size
+            max_context_size=max_context_size
         )
         
     def _format_system_prompt(self, agent_config: AgentConfig,updated_backstory = None) -> Optional[str]:
@@ -50,7 +58,8 @@ class ChatHandler:
                 char_personality=agent_config.character.personality,
                 char_backstory=updated_backstory or agent_config.character.backstory,
                 tags=agent_config.character.tags,
-                char_seed=agent_config.character.seed_message
+                char_seed=agent_config.character.seed_message,
+                char=agent_config.character.name
             )
         except (AttributeError, KeyError) as e:
             print(f"Error formatting system prompt: {str(e)}")
@@ -76,11 +85,10 @@ class ChatHandler:
         self.file_service.save_json(messages,agent_config.workspace_id,filename)
         
     def append_chat_history(self, messages: List[Dict], agent_config: AgentConfig):
-        pass
+        chat_history = self.get_chat_history(agent_config,full_history=True)
+        chat_history.extend(messages)
+        self.save_chat_history(chat_history, agent_config)
         
-    def _format_chat_history(self, history: List[Dict], agent_config: AgentConfig) -> List[Dict]:
-        system_prompt = self._format_system_prompt(agent_config)
-        return [{"role": "system", "content": system_prompt}] + history[-agent_config.llm_config.context_size:]
 
     def filter_messages_for_context(self, messages: List[Dict], max_context_size: int = 4096) -> List[Dict]:
         """
@@ -92,6 +100,7 @@ class ChatHandler:
             return len(content) // 4
         if not messages:
             return []
+
         # Extract system message
         system_message = next((msg for msg in messages if msg.get('role') == 'system'), None)
         filtered_messages = [system_message] if system_message else []

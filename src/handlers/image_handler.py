@@ -13,6 +13,7 @@ import base64
 import re
 
 euler_a_models = [ "156375","286821","303526","378499","293564","384264" ]
+getimg_anime_style_models = ["reproduction-v3-31","real-cartoon-xl-v6","sdvn7-niji-style-xl-v1","counterfeit-xl-v2-5","animagine-xl-v-3-1"]
 
 
 class ImageHandler:
@@ -43,6 +44,17 @@ class ImageHandler:
             "output_format": agent_config.image_config.image_format
         }
 
+        #if payload.get("model") in getimg_anime_style_models:
+            #payload["negative_prompt"] = anime_style_negative_prompt
+
+        get_img_sdxl_models = [ "juggernaut-xl-v10","realvis-xl-v4","reproduction-v3-31","real-cartoon-xl-v6","sdvn7-niji-style-xl-v1","counterfeit-xl-v2-5","animagine-xl-v-3-1"]
+        
+        if payload.get("model") in get_img_sdxl_models:
+            self.getimg_base_url = "https://api.getimg.ai/v1/stable-diffusion-xl/text-to-image"
+            payload['scheduler'] = 'euler'
+            
+        
+        #print(f"Generating image with GetImg API: {payload}")
         try:
             response = requests.post(self.getimg_base_url, headers=headers, json=payload)
             response.raise_for_status()
@@ -62,7 +74,8 @@ class ImageHandler:
             if (agent_config.image_config.provider == "getimg" or "https" not in agent_config.image_config.image_model)\
             and "flux-general-with-lora" not in agent_config.image_config.image_model \
             and "SG161222/Realistic_Vision_V6.0_B1_noVAE" not in agent_config.image_config.image_model \
-            and "fal-ai/flux/dev" not in agent_config.image_config.image_model:
+            and "fal-ai/flux/dev" not in agent_config.image_config.image_model \
+            and "fal-ai/stable-diffusion-v35-medium" not in agent_config.image_config.image_model:
                 #print(f"Generating image with GetImg")
                 image_data = self._generate_with_getimg(prompt, agent_config)
                 if image_data:
@@ -83,6 +96,7 @@ class ImageHandler:
                 if not image_url:
                     print("Failed to generate image")
                     return None
+                print(image_url)
                 return self.file_service.save_image_to_bucket(
                     image_url,
                     agent_config,
@@ -131,7 +145,6 @@ class ImageHandler:
         if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models):
             scheluder_config = "Euler A"
             num_inference_steps = "30"
-            negative_prompt = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name"
 
         if agent_config.image_config.image_model == "SG161222/Realistic_Vision_V6.0_B1_noVAE":
             agent_config.image_config.image_api_path = "fal-ai/realistic-vision"
@@ -162,6 +175,9 @@ class ImageHandler:
         if agent_config.image_config.loras:
             job_details["loras"] = agent_config.image_config.loras
 
+        if agent_config.image_config.image_model == "fal-ai/stable-diffusion-v35-medium":
+            agent_config.image_config.image_api_path = "/fal-ai/stable-diffusion-v35-medium"
+            
         if len(prompt) > 10:
             try:
                 response = requests.post(
@@ -301,40 +317,44 @@ class ImageHandler:
     
         local_messages = messages.copy()
         prompt_prefix = ""
-        prompt_suffix = "self shot,depth of field "
-        if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models):
-            negative_prompt_prefix="lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name,",
+        prompt_suffix = "masterpiece ,realistic,skin texture,ultra detailed,highres, RAW,8k, selfie, self shot,depth of field"
+        
+        if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models) or \
+        agent_config.image_config.image_model in getimg_anime_style_models:
             prompt_prefix = "masterpiece, best quality, very aesthetic, absurdres,"
             prompt_suffix = ""
             
             
-        prompt = f"""Generate image description keywords as a JSON object.
+        prompt = f"""
+Generate concise, high-density image description with maximum 20 keywords total across all categories, as a JSON object.
 Character appearance: {agent_config.character.appearance}
+
 Include keywords that describe:
 - Character: Character's physical appearance and current expression
-- Actions: Notable actions or poses
+- Actions: Notable action or pose
 - Visual Elements: Important visual elements from the current context
-- Setting: Setting and environment
+- Environment: Setting and environment
 - Lightning: Lighting and atmosphere
 - Atmosphere: Atmospheric effects
 
 - Quality Details: Quality details (resolution, style e.g. {prompt_prefix}{prompt_suffix})
 
-Describe image for {agent_config.character.name}'s message: {local_messages[-1]['content']}
+Describe concise image for {agent_config.character.name}'s message: {local_messages[-1]['content']}
 
+Consider chat history for context but analyze the main point of the message that would describe a freeze image, fill in missing relevant keywords from previous messages. Keep it concise and dense, using up to 20 keywords across categories.
 Return ONLY a JSON object, like this format:
 {{
   "Character": "description here",
-  "Actions": "actions here",
+  "Actions": "action or pose here",
   "Visual Elements": "visual elements",
-  "Setting": "setting here",
+  "Environment": "Environment setting here",
   "Lighting": "lighting details",
   "Atmosphere": "atmosphere details",
   "Quality Details": "quality details"
 }}""".rstrip()
+        #print(prompt)
         image_description_response = ""
         local_messages.append({"role": "user", "content": prompt})
-        
         for token in self.llm_handler.generate(local_messages,
                                                agent_config,
                                                temperature=0.2,
@@ -360,9 +380,9 @@ Return ONLY a JSON object, like this format:
 
             # Extract all values and join them
             result = []
-            for value in data.values():
+            for key, value in data.items():
                 if value and isinstance(value, str):
-                    result.append(value.strip())
+                        result.append(value.strip())
 
             return ", ".join(result)
         except Exception as e:

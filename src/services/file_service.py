@@ -1,15 +1,19 @@
 # src/services/file_service.py
+import modal
 import json
 import pathlib
+from modal.volume import Volume
 import requests
 import shortuuid
 from typing import Any, Optional
 from src.gcp_constants import GCP_PUBLIC_IMAGE_BUCKET
-from src.models.schemas import AgentConfig
+from src.models.schemas import AgentConfig,volume
 
 class FileService:
-    def __init__(self, base_path: str = "/data"):
+    def __init__(self,  base_path = "/data"):
         import shortuuid
+
+        self.volume = volume
         self.base_path = pathlib.Path(base_path)
         self.image_base_path = pathlib.Path("/cloud-images")
         self.public_url_base = f"https://storage.googleapis.com/{GCP_PUBLIC_IMAGE_BUCKET}"
@@ -24,8 +28,10 @@ class FileService:
         print(f"Saving JSON to {path}\n")
         with path.open('w') as f:
             json.dump(data, f)
+        self.volume.commit()
 
     def load_json(self, workspace_id: str, filename: str) -> Optional[dict]:
+        self.volume.reload()
         path = self.get_path(workspace_id, filename)
         print(f"Loading JSON from {path}\n")
         if path.exists():
@@ -92,6 +98,7 @@ class FileService:
             if path.exists():
                 print("Deleting file:", path)
                 path.unlink()
+                volume.commit()
                 return True
             return False
         except Exception as e:

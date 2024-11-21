@@ -74,7 +74,7 @@ class ModalAgent:
         self.config_manager = AgentConfigHandler()
     
         # Initialize services
-        self.file_service = FileService()
+        self.file_service = FileService(base_path="/data")
         self.cache_service = CacheService()
 
     
@@ -105,6 +105,7 @@ class ModalAgent:
             #print("Modal agent RUN: ", agent_config.context_id, agent_config.agent_id,agent_config.workspace_id)
             if not isinstance(agent_config, PromptConfig):
                 print("Not PromptConfig")
+                
             # Get chat history and prepare messages
             messages = self.chat_handler.prepare_messages(
                 agent_config.prompt,  # Pass the prompt string
@@ -114,6 +115,7 @@ class ModalAgent:
             messages_without_image = None
             if agent_config.enable_image_generation:
                 messages_without_image = self.chat_handler.remove_image_messages(messages)
+                
             llm_response = ""
             # Generate response using LLM
             for token in self.llm_handler.generate(messages_without_image or messages, agent_config):
@@ -133,7 +135,7 @@ class ModalAgent:
                 if is_image_request:                    
                     yield f"![image]({public_url})" 
 
-                    image_url = self.image_handler.request_image_generation(self.chat_handler.keep_last_image_message(messages), agent_config, preallocated_image_name)
+                    image_url = self.image_handler.request_image_generation(self.chat_handler.remove_image_messages(messages), agent_config, preallocated_image_name)
 
                     if image_url:
                         print("Image generated successfully, url: "+image_url)
@@ -228,8 +230,12 @@ class ModalAgent:
 
 
     @modal.method()
-    def append_chat_history(self, agent_config: AgentConfig, messages: List[Dict]) -> bool:
+    def append_chat_history(self, agent_config: AgentConfig, **kwargs) -> bool:
         try:
+            print("agent config",AgentConfig)
+            
+            messages = kwargs.get('messages', [])
+            print("messaages: ", messages)
             #print(f"Appending chat history for agent config: {agent_config.context_id} {agent_config.agent}, {agent_config.workspace_id}")
             # Get agent config first to ensure it exists and is up to date
             agent_config = self.get_or_create_agent_config.local(agent_config)

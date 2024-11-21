@@ -67,11 +67,11 @@ async def get_chat_history(agent_config: AgentConfig, credentials: str = Depends
 @web_app.post("/append_chat_history")
 async def append_chat_history(agent_config: AgentConfig, credentials: str = Depends(authenticate)):
     #TODO get messages from kwargs
-    messages = []
+    
     if not check_agent_config(agent_config):
         raise HTTPException(status_code=400, detail="Invalid agent configuration POST /append_chat_history")
     print("POST /append_chat_history ", agent_config.context_id, agent_config.agent_id, agent_config.workspace_id)
-    return modal_agent.append_chat_history.remote(agent_config,messages)
+    return modal_agent.append_chat_history.remote(agent_config,**agent_config.kwargs)
                            
 @web_app.post("/delete_chat_history")
 async def delete_chat_history(agent_config: AgentConfig,credentials: str = Depends(authenticate)):
