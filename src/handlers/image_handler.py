@@ -341,7 +341,7 @@ Include keywords that describe:
 
 Describe concise image for {agent_config.character.name}'s message: {local_messages[-1]['content']}
 
-Consider chat history for context but analyze the main point of the message that would describe a freeze image, fill in missing relevant keywords from previous messages. Keep it concise and dense, using up to 20 keywords across categories.
+Consider chat history for context but analyze the main point of the message that would describe a freeze image, fill in missing relevant keywords from previous messages. Keep it concise and dense, using up to 20 keywords total across all ategories.
 Return ONLY a JSON object, like this format:
 {{
   "Character": "description here",

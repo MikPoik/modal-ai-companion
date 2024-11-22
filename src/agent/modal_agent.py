@@ -232,17 +232,25 @@ class ModalAgent:
     @modal.method()
     def append_chat_history(self, agent_config: AgentConfig, **kwargs) -> bool:
         try:
-            print("agent config",AgentConfig)
-            
-            messages = kwargs.get('messages', [])
-            print("messaages: ", messages)
-            #print(f"Appending chat history for agent config: {agent_config.context_id} {agent_config.agent}, {agent_config.workspace_id}")
+            # Extract chat_messages from kwargs if present
+            chat_messages = None
+            if hasattr(agent_config, 'kwargs') and isinstance(agent_config.kwargs, dict):
+                chat_messages = agent_config.kwargs.get('chat_messages', [])
+                # If chat_messages is a string, try to parse it as JSON
+                if isinstance(chat_messages, str):
+                    chat_messages = json.loads(chat_messages)
+
             # Get agent config first to ensure it exists and is up to date
             agent_config = self.get_or_create_agent_config.local(agent_config)
-    
-            # Use the chat handler to append messages to chat history
-            self.chat_handler.append_chat_history(messages,agent_config)
-            return True
+
+            if chat_messages:
+                # Use the chat handler to append messages to chat history
+                self.chat_handler.append_chat_history(chat_messages, agent_config)
+                return True
+            else:
+                print("No chat messages found to append")
+                return False
+
         except Exception as e:
             print(f"Error appending chat history: {str(e)}")
             return False

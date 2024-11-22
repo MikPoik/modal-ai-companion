@@ -73,9 +73,15 @@ class ChatHandler:
         if isinstance(history, dict):
             history = [history]  # Convert single dictionary to a list
             
+        # Filter out invalid messages
+        valid_history = [
+            msg for msg in history
+            if isinstance(msg, dict) and 'role' in msg and 'content' in msg
+        ]
         if full_history:
-            history = self.filter_messages_for_context(history, agent_config.llm_config.context_size)
-        return history
+            valid_history = self.filter_messages_for_context(valid_history, agent_config.llm_config.context_size)
+
+        return valid_history
 
     def save_chat_history(self, messages: List[Dict], agent_config: AgentConfig):
         import shortuuid
@@ -85,9 +91,37 @@ class ChatHandler:
         self.file_service.save_json(messages,agent_config.workspace_id,filename)
         
     def append_chat_history(self, messages: List[Dict], agent_config: AgentConfig):
-        chat_history = self.get_chat_history(agent_config,full_history=True)
-        chat_history.extend(messages)
-        self.save_chat_history(chat_history, agent_config)
+        """
+        Append messages to chat history
+        messages: List of message dictionaries with 'role' and 'content'
+        """
+        if not messages:
+            return
+
+        # Load existing messages
+        existing_messages = self.file_service.load_json(agent_config.workspace_id, "default_chat.json") or []
+
+        # Ensure existing_messages is a list
+        if not isinstance(existing_messages, list):
+            existing_messages = []
+
+        # Filter out any invalid messages and ensure each message has required fields
+        valid_messages = [
+            msg for msg in messages 
+            if isinstance(msg, dict) and 'role' in msg and 'content' in msg
+        ]
+
+        # Append only valid messages
+        existing_messages.extend(valid_messages)
+
+        # Clean up any stray characters or invalid entries
+        cleaned_messages = [
+            msg for msg in existing_messages
+            if isinstance(msg, dict) and 'role' in msg and 'content' in msg
+        ]
+
+        # Save cleaned messages
+        self.file_service.save_json(cleaned_messages, agent_config.workspace_id, "default_chat.json")
         
 
     def filter_messages_for_context(self, messages: List[Dict], max_context_size: int = 4096) -> List[Dict]:
