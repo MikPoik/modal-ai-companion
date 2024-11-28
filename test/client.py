@@ -44,7 +44,6 @@ async def init_character(client: httpx.AsyncClient, character_yaml: str):
         print("Failed to load character, using defaults")
         return
 
-    # Initialize agent with loaded character
     headers = {
         "Authorization": f"Bearer {AUTH_TOKEN}",
         "Content-Type": "application/json"
@@ -60,25 +59,24 @@ async def init_character(client: httpx.AsyncClient, character_yaml: str):
     init_url = "https://mikpoik--modal-agent-fastapi-app-dev.modal.run/init_agent"
     response = await client.post(init_url, headers=headers, json=agent_config, timeout=TIMEOUT_SETTINGS)
     if response.status_code == 200:
-        print(f"Initialized agent with character: {character.name}")
+        print("***Chat***")
     else:
         print("Failed to initialize agent")
 
 async def main():
     async with httpx.AsyncClient() as client:
         # Initialize with character from YAML
-        await init_character(client, "test/characters/velvet.yaml")
+        await init_character(client, "test/characters/ashley.yaml")
 
-        # Send initial greeting
-        if True:
-            await send_message(client, """Narrate a brief introduction scene with me,showing the character's personality. Keep it concise but engaging. Stay in character. Start with dialogue or actions. Progress at slow pace.""")
+        # Initial scene setup with structured prompt
+        initial_prompt = """Let's start the interaction. Embody character and speak naturally, expressing through dialogue only and conveying emotions and actions through natural words."""
+
 
         while True:
-            prompt = input("Enter your prompt ('exit' to quit): ")
+            prompt = input("\nEnter your message ('exit' to quit): ")
             if prompt.lower() == 'exit':
                 break
             await send_message(client, prompt)
-
 
 if __name__ == "__main__":
     asyncio.run(main())

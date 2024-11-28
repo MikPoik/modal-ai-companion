@@ -15,7 +15,6 @@ import re
 euler_a_models = [ "156375","286821","303526","378499","293564","384264" ]
 getimg_anime_style_models = ["reproduction-v3-31","real-cartoon-xl-v6","sdvn7-niji-style-xl-v1","counterfeit-xl-v2-5","animagine-xl-v-3-1"]
 
-
 class ImageHandler:
     def __init__(self):
         self.file_service = FileService('/cloud-images')
@@ -34,7 +33,7 @@ class ImageHandler:
 
         payload = {
             "model": agent_config.image_config.image_model,
-            "prompt": prompt,
+            "prompt":prompt,
             "negative_prompt": agent_config.image_config.negative_prompt,
             "width": agent_config.image_config.image_width,
             "height": agent_config.image_config.image_height,
@@ -44,14 +43,17 @@ class ImageHandler:
             "output_format": agent_config.image_config.image_format
         }
 
-        #if payload.get("model") in getimg_anime_style_models:
-            #payload["negative_prompt"] = anime_style_negative_prompt
+        if payload.get("model") in getimg_anime_style_models:
+            payload["prompt"] = "masterpiece, "+payload["prompt"]
+        else:
+            payload["prompt"] = "Photo of "+payload["prompt"]
 
         get_img_sdxl_models = [ "juggernaut-xl-v10","realvis-xl-v4","reproduction-v3-31","real-cartoon-xl-v6","sdvn7-niji-style-xl-v1","counterfeit-xl-v2-5","animagine-xl-v-3-1"]
         
         if payload.get("model") in get_img_sdxl_models:
             self.getimg_base_url = "https://api.getimg.ai/v1/stable-diffusion-xl/text-to-image"
             payload['scheduler'] = 'euler'
+            payload['steps'] = 25
             
         
         #print(f"Generating image with GetImg API: {payload}")
@@ -71,6 +73,7 @@ class ImageHandler:
     def generate_image(self, prompt: str, agent_config: AgentConfig, folder: str = "images",preallocated_image_name:str = "") -> Optional[str]:
         """Generate an image and save it to the specified folder."""
         try:
+            print("Image model: ", agent_config.image_config.image_model)
             if (agent_config.image_config.provider == "getimg" or "https" not in agent_config.image_config.image_model)\
             and "flux-general-with-lora" not in agent_config.image_config.image_model \
             and "SG161222/Realistic_Vision_V6.0_B1_noVAE" not in agent_config.image_config.image_model \
@@ -141,8 +144,9 @@ class ImageHandler:
         num_inference_steps = agent_config.image_config.num_inference_steps
         model_architecture = agent_config.image_config.image_model_architecture
         api_path = agent_config.image_config.image_api_path
-        
+        prompt_prefix ="Photo of "
         if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models):
+            prompt_prefix = "masterpiece, "
             scheluder_config = "Euler A"
             num_inference_steps = "30"
 
@@ -154,7 +158,7 @@ class ImageHandler:
 
         # Prepare job details based on agent config
         job_details = {
-            "prompt": prompt,
+            "prompt": prompt_prefix+prompt,
             "model_name": agent_config.image_config.image_model,
             "negative_prompt": negative_prompt,
             "num_inference_steps": num_inference_steps,
@@ -166,7 +170,8 @@ class ImageHandler:
             "model_architecture":agent_config.image_config.image_model_architecture,
             "image_format": agent_config.image_config.image_format,
             "prompt_weighting": True,
-            "num_images": 1,
+            "num_images": 1
+            
         }
         
         formatted_job_details = json.dumps(job_details, indent=4)
@@ -325,32 +330,15 @@ class ImageHandler:
             prompt_suffix = ""
             
             
-        prompt = f"""
-Generate concise, high-density image description with maximum 20 keywords total across all categories, as a JSON object.
-Character appearance: {agent_config.character.appearance}
-
-Include keywords that describe:
-- Character: Character's physical appearance and current expression
-- Actions: Notable action or pose
-- Visual Elements: Important visual elements from the current context
-- Environment: Setting and environment
-- Lightning: Lighting and atmosphere
-- Atmosphere: Atmospheric effects
-
-- Quality Details: Quality details (resolution, style e.g. {prompt_prefix}{prompt_suffix})
-
-Describe concise image for {agent_config.character.name}'s message: {local_messages[-1]['content']}
-
-Consider chat history for context but analyze the main point of the message that would describe a freeze image, fill in missing relevant keywords from previous messages. Keep it concise and dense, using up to 20 keywords total across all ategories.
-Return ONLY a JSON object, like this format:
+        prompt = f"""Analyze the following message and create an image description for {agent_config.character.name}.
+Last message: {local_messages[-1]['content']}
+Consider chat history for context and create a detailed image description. Return ONLY a JSON object in this format:
 {{
-  "Character": "description here",
-  "Actions": "action or pose here",
-  "Visual Elements": "visual elements",
-  "Environment": "Environment setting here",
-  "Lighting": "lighting details",
-  "Atmosphere": "atmosphere details",
-  "Quality Details": "quality details"
+    "Primary Features": ["age, race, build, distinctive marks"],
+    "Attire": ["clothing, accessories, equipment"],
+    "Expression": ["facial expression, posture, presence"],
+    "Setting": ["environment, lighting, atmosphere"],
+    "Technical Details": ["angle, art style, mood"]
 }}""".rstrip()
         #print(prompt)
         image_description_response = ""
@@ -374,17 +362,20 @@ Return ONLY a JSON object, like this format:
         try:
             # Clean up the response
             cleaned_response = image_description_response.replace("```json", "").replace("```", "").strip()
-
+    
             # Parse JSON object
             data = json.loads(cleaned_response)
-
-            # Extract all values and join them
+    
+            # Extract and join array values for each category
             result = []
-            for key, value in data.items():
-                if value and isinstance(value, str):
-                        result.append(value.strip())
-
-            return ", ".join(result)
+            for category in ["Primary Features", "Attire", "Expression","Setting","Technical Details"]:
+                if category in data and isinstance(data[category], list):
+                    category_items = [item.strip() for item in data[category] if item and isinstance(item, str)]
+                    if category_items:
+                        result.append(", ".join(category_items))
+    
+            # Join all categories with commas
+            return ", ".join(filter(None, result))
         except Exception as e:
             print(f"Error parsing image description: {str(e)}")
             return image_description_response
