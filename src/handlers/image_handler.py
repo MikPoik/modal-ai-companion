@@ -43,11 +43,6 @@ class ImageHandler:
             "output_format": agent_config.image_config.image_format
         }
 
-        if payload.get("model") in getimg_anime_style_models:
-            payload["prompt"] = "masterpiece, "+payload["prompt"]
-        else:
-            payload["prompt"] = "Photo of "+payload["prompt"]
-
         get_img_sdxl_models = [ "juggernaut-xl-v10","realvis-xl-v4","reproduction-v3-31","real-cartoon-xl-v6","sdvn7-niji-style-xl-v1","counterfeit-xl-v2-5","animagine-xl-v-3-1"]
         
         if payload.get("model") in get_img_sdxl_models:
@@ -73,12 +68,16 @@ class ImageHandler:
     def generate_image(self, prompt: str, agent_config: AgentConfig, folder: str = "images",preallocated_image_name:str = "") -> Optional[str]:
         """Generate an image and save it to the specified folder."""
         try:
+            
             print("Image model: ", agent_config.image_config.image_model)
             if (agent_config.image_config.provider == "getimg" or "https" not in agent_config.image_config.image_model)\
             and "flux-general-with-lora" not in agent_config.image_config.image_model \
             and "SG161222/Realistic_Vision_V6.0_B1_noVAE" not in agent_config.image_config.image_model \
             and "fal-ai/flux/dev" not in agent_config.image_config.image_model \
             and "fal-ai/stable-diffusion-v35-medium" not in agent_config.image_config.image_model:
+                if agent_config.image_config.image_model in getimg_anime_style_models:
+                    prompt = "masterpiece, "+prompt
+                    
                 #print(f"Generating image with GetImg")
                 image_data = self._generate_with_getimg(prompt, agent_config)
                 if image_data:
@@ -332,10 +331,10 @@ class ImageHandler:
             
         prompt = f"""Analyze the following message and create an image description for {agent_config.character.name}.
 Last message: {local_messages[-1]['content']}
-Consider chat history for context and create a detailed image description. Return ONLY a JSON object in this format:
+Consider character appearance and chat history for context and create a detailed image description. Return ONLY a JSON object in this format:
 {{
     "Primary Features": ["age, race, build, distinctive marks"],
-    "Attire": ["clothing, accessories, equipment"],
+    "Attire": ["clothing, accessories or equipment, if any"],
     "Expression": ["facial expression, posture, presence"],
     "Setting": ["environment, lighting, atmosphere"],
     "Technical Details": ["angle, art style, mood"]

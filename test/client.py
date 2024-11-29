@@ -70,6 +70,7 @@ async def main():
 
         # Initial scene setup with structured prompt
         initial_prompt = """Let's start the interaction. Embody character and speak naturally, expressing through dialogue only and conveying emotions and actions through natural words."""
+        await send_message(client, initial_prompt)
 
 
         while True:
