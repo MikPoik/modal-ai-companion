@@ -48,7 +48,7 @@ class ImageHandler:
         if payload.get("model") in get_img_sdxl_models:
             self.getimg_base_url = "https://api.getimg.ai/v1/stable-diffusion-xl/text-to-image"
             payload['scheduler'] = 'euler'
-            payload['steps'] = 25
+            payload['steps'] = 26
             
         
         #print(f"Generating image with GetImg API: {payload}")
@@ -75,6 +75,7 @@ class ImageHandler:
             and "SG161222/Realistic_Vision_V6.0_B1_noVAE" not in agent_config.image_config.image_model \
             and "fal-ai/flux/dev" not in agent_config.image_config.image_model \
             and "fal-ai/stable-diffusion-v35-medium" not in agent_config.image_config.image_model:
+                
                 if agent_config.image_config.image_model in getimg_anime_style_models:
                     prompt = "masterpiece, "+prompt
                     
@@ -320,8 +321,9 @@ class ImageHandler:
             return last_ten_messages
     
         local_messages = messages.copy()
+        local_messages = self.update_appearance_from_image_message(local_messages, agent_config)
         prompt_prefix = ""
-        prompt_suffix = "masterpiece ,realistic,skin texture,ultra detailed,highres, RAW,8k, selfie, self shot,depth of field"
+        prompt_suffix = "masterpiece, realistic, ultra detailed, highres, RAW, 8k, selfie, self shot, depth of field"
         
         if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models) or \
         agent_config.image_config.image_model in getimg_anime_style_models:
@@ -329,22 +331,33 @@ class ImageHandler:
             prompt_suffix = ""
             
             
-        prompt = f"""Analyze the following message and create an image description for {agent_config.character.name}.
-Last message: {local_messages[-1]['content']}
-Consider character appearance and chat history for context and create a detailed image description. Return ONLY a JSON object in this format:
+        prompt = f"""Analyze the following message and create an appropriate, concise and dense image description for {agent_config.character.name}.
+Previous message: {local_messages[-1]['content']}
+Consider current context and create a unique updated detailed image description. Fill in missing details for image. Pay attention to what clothes character is wearing, type, layers,colors and if clothing was removed. Keep track of environment, if location has changed.
+Consider these requirements:
+1. Always specify clothing, unless clothing was removed in the previous message. All explicit and nudity must be introduced in realistic pace but still adhering to message.
+2. Ensure clothing is contextually appropriate for:
+   - Current setting/location
+   - Ongoing activity
+   - Environment
+   - Social context
+3. Ensure character posture is accurate and appropriate for the current context.
+4. Ensure location is accurate and appropriate for the current context.
+Avoid repeating descriptions across categories.
+Return ONLY a JSON object in this format:
 {{
-    "Primary Features": ["age, race, build, distinctive marks"],
-    "Attire": ["clothing, accessories or equipment, if any"],
-    "Expression": ["facial expression, posture, presence"],
-    "Setting": ["environment, lighting, atmosphere"],
-    "Technical Details": ["angle, art style, mood"]
+    "Primary Features": ["gender,age, race, facial features, build, distinctive features"],
+    "Attire": ["upper ,lower body clothing, accessories"],
+    "Expression": ["facial expression, body posture, body action, presence"],
+    "Setting": ["environment description, lighting, atmosphere"],
+    "Technical Details": ["angle, image resolution, mood, e.g.{prompt_suffix}]
 }}""".rstrip()
-        #print(prompt)
+
         image_description_response = ""
         local_messages.append({"role": "user", "content": prompt})
         for token in self.llm_handler.generate(local_messages,
                                                agent_config,
-                                               temperature=0.2,
+                                               temperature=0.4,
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider):
             image_description_response += token
@@ -372,6 +385,8 @@ Consider character appearance and chat history for context and create a detailed
                     category_items = [item.strip() for item in data[category] if item and isinstance(item, str)]
                     if category_items:
                         result.append(", ".join(category_items))
+                        #result.append(f"{category}: {', '.join(category_items)}")
+                    
     
             # Join all categories with commas
             return ", ".join(filter(None, result))
@@ -388,3 +403,22 @@ Consider character appearance and chat history for context and create a detailed
                 formatted_messages.append(f"{role}: {msg['content']}")
     
         return "\n".join(formatted_messages)
+
+    def update_appearance_from_image_message(self, local_messages: List[dict],agent_config:AgentConfig):
+        # Step 1: Find the last image message
+        last_image_message = next((msg for msg in reversed(local_messages) if msg.get('tag') == 'image'), None)
+        if last_image_message:
+            # Step 2: Extract keywords from the markdown
+            image_content = last_image_message['content']
+            match = re.search(r'!\[(.*?)\]\((.*?)\)', image_content)
+            if match:
+                keywords = match.group(1)  # Extract keywords
+                # Step 3: Update the appearance variable in system prompt
+                for msg in local_messages:
+                    if msg.get('role') == 'system':
+                        # Append extracted keywords to appearance
+                        if 'Appearance' in msg['content']:
+                            msg['content'] = msg['content'].replace('Appearance: ', f"Appearance: {keywords},")
+                        break  # Update only the first system message
+        local_messages = [msg for msg in local_messages if msg.get('tag') != 'image'] 
+        return local_messages

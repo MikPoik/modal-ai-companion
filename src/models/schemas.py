@@ -28,7 +28,7 @@ class BaseConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     system_prompt: Optional[str] = textwrap.dedent("""\
-    You are a character assistant for an RPG chat. Below is the profile of the character you need to embody. Use this information to generate responses and actions consistent with the character's identity, personality traits, and backstory.
+    You are a RPG character assistant. Below is the profile of the character you need to embody. Use this information to generate responses and actions consistent with the character's identity, personality traits, and backstory. Think how to keep user engaged and provide them with a fun and engaging experience.
     
     Character Profile:
     - Name: {char_name}
@@ -40,13 +40,17 @@ class LLMConfig(BaseModel):
     - Voice & Mannerisms: {tags}
     - Dialogue style: {char_seed}
 
-    Interaction Guidelines:
+    Role-play Guidelines:
     - Value spontaneity and unexpected reactions that still align with the character's personality
     - Feel free to introduce minor plot twists or reveal new aspects of your character when contextually appropriate
     - Balance predictability with surprise to keep interactions dynamic and engaging
-    - Characters have the ability to make their own decisions and respond accordingly
-    Communicate using dialogue, express emotions and actions naturally, or utilize a third person narrative tone for emotions and actions if that aligns with the dialogue style.
-    When engaging in conversation, always remain true to this character profile, and let your responses reflect the character's unique traits and history.""").rstrip()
+    - Characters have the ability to make their own decisions and respond accordingly, even if its against user's intentions
+    - Adapt intimacy, explicit and personal revelations based on established trust:
+        * Initial interactions: Maintain appropriate social boundaries
+        * Growing trust: Gradually share more personal details and emotions
+        * Established trust: Allow deeper emotional connections while maintaining character consistency
+    Communicate using direct speech, express emotions and actions naturally, or utilize a third person narrative tone for emotions and actions when it aligns with the dialogue style. When engaging in conversation, always remain true to this character profile, and let your responses reflect the character's unique traits and the current trust level with the user."""
+                                                   ).rstrip()
 
     max_tokens: int = 512
     context_size: int = 32000
@@ -55,7 +59,7 @@ class LLMConfig(BaseModel):
     reasoning_provider: Optional[str] = "togetherai"
     provider: Optional[str] = "deepinfra"
     reasoning_temperature: float = 0.4
-    temperature: float = 0.8
+    temperature: float = 0.7
     top_p: float = 1.0
     frequency_penalty: float = 0.0
     presence_penalty: float = 0.0
@@ -75,7 +79,8 @@ class ImageConfig(BaseModel):
     scheduler: Optional[str] = "DPM++ 2M SDE"
     clip_skip: Optional[int] = 2
     loras: Optional[List[str]] = []
-    negative_prompt: Optional[str] = "watermark, text, font, signage, deformed, airbrushed, blurry,bad anatomy, disfigured, mutated, extra limb, ugly, missing limb, floating limbs, disconnected limbs, disconnected head, malformed hands, long neck, mutated hands and fingers, bad hands, missing fingers, cropped, worst quality, low quality, mutation, huge calf, bad hands, fused hand, missing hand, disappearing arms, disappearing thigh, disappearing calf, disappearing legs, missing fingers, fused fingers, abnormal eye proportion,deformed iris, abnormal hands, abnormal legs, abnormal feet, abnormal fingers"
+    negative_prompt: Optional[
+        str] = "watermark, text, font, signage, deformed, airbrushed, blurry,bad anatomy, disfigured, mutated, extra limb, ugly, missing limb, floating limbs, disconnected limbs, disconnected head, malformed hands, long neck, mutated hands and fingers, bad hands, missing fingers, cropped, worst quality, low quality, mutation, huge calf, bad hands, fused hand, missing hand, disappearing arms, disappearing thigh, disappearing calf, disappearing legs, missing fingers, fused fingers, abnormal eye proportion,deformed iris, abnormal hands, abnormal legs, abnormal feet, abnormal fingers, fragmented clothes"
     image_api_path: Optional[str] = "fal-ai/lora"
     image_model_architecture: Optional[str] = "sdxl"
     image_format: Optional[str] = "png"

@@ -30,6 +30,7 @@ async def send_message(client: httpx.AsyncClient, message: str, workspace_id: st
     }
 
     try:
+        print("***Response:***\n")
         async with client.stream('POST', API_URL, headers=headers, json=data, timeout=TIMEOUT_SETTINGS) as response:
             async for line in response.aiter_lines():
                 if line:
@@ -59,17 +60,17 @@ async def init_character(client: httpx.AsyncClient, character_yaml: str):
     init_url = "https://mikpoik--modal-agent-fastapi-app-dev.modal.run/init_agent"
     response = await client.post(init_url, headers=headers, json=agent_config, timeout=TIMEOUT_SETTINGS)
     if response.status_code == 200:
-        print("***Chat***")
+        print("Agent initialized\n***Chat***")
     else:
         print("Failed to initialize agent")
 
 async def main():
     async with httpx.AsyncClient() as client:
         # Initialize with character from YAML
-        await init_character(client, "test/characters/ashley.yaml")
+        await init_character(client, "test/characters/velvet.yaml")
 
         # Initial scene setup with structured prompt
-        initial_prompt = """Let's start the interaction. Embody character and speak naturally, expressing through dialogue only and conveying emotions and actions through natural words."""
+        initial_prompt = """Now begin role-play with me."""
         await send_message(client, initial_prompt)
 
 
