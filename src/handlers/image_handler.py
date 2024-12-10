@@ -48,9 +48,10 @@ class ImageHandler:
         if payload.get("model") in get_img_sdxl_models:
             self.getimg_base_url = "https://api.getimg.ai/v1/stable-diffusion-xl/text-to-image"
             payload['scheduler'] = 'euler'
-            payload['steps'] = 26
             
-        
+        if payload.get("model") in getimg_anime_style_models:
+            payload['negative_prompt'] = agent_config.image_config.anime_negative_prompt
+            
         #print(f"Generating image with GetImg API: {payload}")
         try:
             response = requests.post(self.getimg_base_url, headers=headers, json=payload)
@@ -149,6 +150,7 @@ class ImageHandler:
             prompt_prefix = "masterpiece, "
             scheluder_config = "Euler A"
             num_inference_steps = "30"
+            negative_prompt = agent_config.image_config.anime_negative_prompt
 
         if agent_config.image_config.image_model == "SG161222/Realistic_Vision_V6.0_B1_noVAE":
             agent_config.image_config.image_api_path = "fal-ai/realistic-vision"
@@ -320,79 +322,102 @@ class ImageHandler:
     
             return last_ten_messages
     
-        local_messages = messages.copy()
-        local_messages = self.update_appearance_from_image_message(local_messages, agent_config)
-        prompt_prefix = ""
-        prompt_suffix = "masterpiece, realistic, ultra detailed, highres, RAW, 8k, selfie, self shot, depth of field"
-        
-        if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models) or \
-        agent_config.image_config.image_model in getimg_anime_style_models:
-            prompt_prefix = "masterpiece, best quality, very aesthetic, absurdres,"
-            prompt_suffix = ""
+        local_messages = messages.copy()          
             
-            
-        prompt = f"""Analyze the following message and create an appropriate, concise and dense image description for {agent_config.character.name}.
-Previous message: {local_messages[-1]['content']}
-Consider current context and create a unique updated detailed image description. Fill in missing details for image. Pay attention to what clothes character is wearing, type, layers,colors and if clothing was removed. Keep track of environment, if location has changed.
-Consider these requirements:
-1. Always specify clothing, unless clothing was removed in the previous message. All explicit and nudity must be introduced in realistic pace but still adhering to message.
-2. Ensure clothing is contextually appropriate for:
-   - Current setting/location
-   - Ongoing activity
-   - Environment
-   - Social context
-3. Ensure character posture is accurate and appropriate for the current context.
-4. Ensure location is accurate and appropriate for the current context.
-Avoid repeating descriptions across categories.
-Return ONLY a JSON object in this format:
-{{
-    "Primary Features": ["gender,age, race, facial features, build, distinctive features"],
-    "Attire": ["upper ,lower body clothing, accessories"],
-    "Expression": ["facial expression, body posture, body action, presence"],
-    "Setting": ["environment description, lighting, atmosphere"],
-    "Technical Details": ["angle, image resolution, mood, e.g.{prompt_suffix}]
-}}""".rstrip()
+        prompt = textwrap.dedent(f"""
+        <Instruction>
+        Analyze the current scene and character appearance to generate a updated detailed visual description optimized for image generation, making sure description is up to date to the latest message.
+
+        Format your response as a structured JSON with the following categories:
+
+        {{
+            "ImageDescriptionKeywords": {{
+                "Character": [
+                    "identity descriptors",
+                    "age and gender",
+                    "ethnicity if relevant",
+                    "body type and build"
+                ],
+                "Pose & Expression": [
+                    "current body posture",
+                    "facial expression",
+                    "emotional state",
+                    "current gestural details"
+                ],
+                "Physical Features": [
+                    "facial features, generate if missing",
+                    "body features and details, generate if missing",
+                    "hair style and color, generate if missing",
+                    "eye details, generate if missing",
+                    "skin details, generate if missing"
+                ],
+                "Clothes": [
+                    "detailed descriptions of clothing items if any, including types and visible named garments",
+                    "specify colors and patterns, if any", 
+                    "materials and textures, if any",
+                    "accessories, if any"
+                ],
+                "Environment": [
+                    "location details",
+                    "lighting conditions",
+                    "time of day",
+                    "weather,only if relevant"
+                ],
+                "Artistic Style": [
+                    "art direction",
+                    "rendering style",
+                    "mood and atmosphere"
+                ]
+                "MessageSummary": "concise summary of recent visual actions and gestures by the character",
+            }}
+        }}
+
+        Keep descriptions precise and visually focused, using specific keywords that translate well to image generation.
+        Track all appearance changes from previous interactions, omit removed details e.g. clothes and add new details.
+        Maintain consistency with established character traits.
+        Use high-density visual descriptors for maximum detail.
+        Match the descriptors to the align with last message context: {local_messages[-1]['content']}
+        Keep it short and consise.
+        """).rstrip()
 
         image_description_response = ""
         local_messages.append({"role": "user", "content": prompt})
         for token in self.llm_handler.generate(local_messages,
                                                agent_config,
-                                               temperature=0.4,
+                                               temperature=0.2,
                                                model=agent_config.llm_config.reasoning_model,
-                                               provider=agent_config.llm_config.reasoning_provider):
+                                               provider=agent_config.llm_config.reasoning_provider,
+                                               max_tokens=800):
             image_description_response += token
+
         #print(image_description_response)
-        image_prompt = self.parse_image_description(image_description_response).strip()
+        cleaned_response = image_description_response.replace("```json", "").replace("```", "").strip()
+        json_data = json.loads(cleaned_response)
+        image_prompt_list = self.parse_appearance(json_data)
+        image_prompt = ', '.join(filter(None, image_prompt_list))
+
         image_url = self.generate_image(image_prompt,agent_config,preallocated_image_name=preallocated_image_name)
         #print(image_url)
         if image_url:
             return f"![{image_prompt}]({image_url})"
         return None
     
-    
-    def parse_image_description(self, image_description_response: str) -> str:
+    def parse_appearance(self, appearance_obj):
+        """Recursively traverse appearance object and join all non-empty string values, with error handling."""
+        parts = []
         try:
-            # Clean up the response
-            cleaned_response = image_description_response.replace("```json", "").replace("```", "").strip()
-    
-            # Parse JSON object
-            data = json.loads(cleaned_response)
-    
-            # Extract and join array values for each category
-            result = []
-            for category in ["Primary Features", "Attire", "Expression","Setting","Technical Details"]:
-                if category in data and isinstance(data[category], list):
-                    category_items = [item.strip() for item in data[category] if item and isinstance(item, str)]
-                    if category_items:
-                        result.append(", ".join(category_items))
-                        #result.append(f"{category}: {', '.join(category_items)}")
-                    
-    
-            # Join all categories with commas
-            return ", ".join(filter(None, result))
+            if isinstance(appearance_obj, dict):
+                for value in appearance_obj.values():
+                    parts.extend(self.parse_appearance(value))
+            elif isinstance(appearance_obj, list):
+                for item in appearance_obj:
+                    parts.extend(self.parse_appearance(item))
+            elif isinstance(appearance_obj, str) and appearance_obj.strip():
+                parts.append(appearance_obj.strip())
         except Exception as e:
-            print(f"Error parsing image description: {str(e)}")
-            return image_description_response
+            print(f"Error processing appearance object: {str(e)}")
+        return [part for part in parts if part]
+        
 
     
     def format_messages_to_display(self,local_messages: list) -> str:
@@ -419,6 +444,7 @@ Return ONLY a JSON object in this format:
                         # Append extracted keywords to appearance
                         if 'Appearance' in msg['content']:
                             msg['content'] = msg['content'].replace('Appearance: ', f"Appearance: {keywords},")
+                            print(msg['content'])
                         break  # Update only the first system message
         local_messages = [msg for msg in local_messages if msg.get('tag') != 'image'] 
         return local_messages

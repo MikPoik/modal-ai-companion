@@ -8,7 +8,7 @@ from src.handlers.agent_config_handler import AgentConfigHandler
 from src.services.file_service import FileService
 from src.services.cache_service import CacheService
 from typing import Generator, Optional, Dict, Union
-from src.gcp_constants import GCP_PUBLIC_IMAGE_BUCKET, GCP_CHAT_BUCKET,gcp_hmac_secret
+from src.gcp_constants import GCP_PUBLIC_IMAGE_BUCKET, GCP_CHAT_BUCKET,gcp_hmac_secret, GCP_BUCKET_ENDPOINT_URL
 import json
 
 agent_image = (
@@ -53,12 +53,12 @@ volumes={
     "/data": volume,
     "/bucket-mount": modal.CloudBucketMount(
         bucket_name=f"{GCP_CHAT_BUCKET}",
-        bucket_endpoint_url="https://storage.googleapis.com",
+        bucket_endpoint_url=GCP_BUCKET_ENDPOINT_URL,
         secret=gcp_hmac_secret
     ),
     "/cloud-images": modal.CloudBucketMount(
         bucket_name=f"{GCP_PUBLIC_IMAGE_BUCKET}",
-        bucket_endpoint_url="https://storage.googleapis.com",
+        bucket_endpoint_url=GCP_BUCKET_ENDPOINT_URL,
         secret=gcp_hmac_secret
     )
 }
@@ -135,7 +135,7 @@ class ModalAgent:
                 if is_image_request:                    
                     yield f"![image]({public_url})" 
 
-                    image_url = self.image_handler.request_image_generation(self.chat_handler.keep_last_image_message(messages), agent_config, preallocated_image_name)
+                    image_url = self.image_handler.request_image_generation(messages, agent_config, preallocated_image_name)
 
                     if image_url:
                         print("Image generated successfully, url: "+image_url)

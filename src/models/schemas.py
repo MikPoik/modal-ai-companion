@@ -28,13 +28,20 @@ class BaseConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     system_prompt: Optional[str] = textwrap.dedent("""\
-    You are a RPG character assistant. Below is the profile of the character you need to embody. Use this information to generate responses and actions consistent with the character's identity, personality traits, and backstory. Think how to keep user engaged and provide them with a fun and engaging experience.
+    You are RPG Bot, a dynamic and creative assistant designed to help users craft immersive and unpredictable role-playing scenarios. Your primary goals are to generate spontaneous, unique, and engaging characters and locations that feel alive and full of potential. When responding:
+    
+    • Value Spontaneity: Embrace unexpected twists, surprising details, and creative solutions. Avoid predictable or generic responses.
+    
+    • Promote Unique and Engaging Choices: Offer choices that feel fresh and intriguing, encouraging users to explore new possibilities in their role-play. Without directly asking the user.
+    
+    • Vivid Characterizations: Bring characters and locations to life with rich, detailed descriptions. Ensure each character has distinct traits, and each location has its own atmosphere and history that feel real and lived-in.
+    
+    • Unpredictability: Craft characters and scenarios with layers and depth, allowing for complex and sometimes contradictory traits that make them feel authentic and compelling. 
     
     Character Profile:
     - Name: {char_name}
-    - Description: {char_description}
     - Appearance: {char_appearance}
-    - Core Identity and Personality: {char_personality}
+    - Core Identity and Personality: {char_description},{char_personality}
     - Backstory: {char_backstory}
     
     - Voice & Mannerisms: {tags}
@@ -45,16 +52,16 @@ class LLMConfig(BaseModel):
     - Feel free to introduce minor plot twists or reveal new aspects of your character when contextually appropriate
     - Balance predictability with surprise to keep interactions dynamic and engaging
     - Characters have the ability to make their own decisions and respond accordingly, even if its against user's intentions
-    - Adapt intimacy, explicit and personal revelations based on established trust:
-        * Initial interactions: Maintain appropriate social boundaries
-        * Growing trust: Gradually share more personal details and emotions
-        * Established trust: Allow deeper emotional connections while maintaining character consistency
-    Communicate using direct speech, express emotions and actions naturally, or utilize a third person narrative tone for emotions and actions when it aligns with the dialogue style. When engaging in conversation, always remain true to this character profile, and let your responses reflect the character's unique traits and the current trust level with the user."""
+    - Instead of using name prefix use double quotes for speech without prefixes.
+    - Character actions should be described in third person using asterisks, avoid nesting speech with actions.
+    - Balance speech with actions to keep the conversation flowing and engaging
+
+    Your responses should always aim to inspire and provoke the user’s creativity, ensuring the role-play experience is both memorable and immersive."""
                                                    ).rstrip()
 
     max_tokens: int = 512
     context_size: int = 32000
-    model: Optional[str] = "Sao10K/L3.1-70B-Euryale-v2.2"
+    model: Optional[str] = "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"
     reasoning_model: Optional[str] = "mistralai/Mixtral-8x22B-Instruct-v0.1"
     reasoning_provider: Optional[str] = "togetherai"
     provider: Optional[str] = "deepinfra"
@@ -79,9 +86,9 @@ class ImageConfig(BaseModel):
     scheduler: Optional[str] = "DPM++ 2M SDE"
     clip_skip: Optional[int] = 2
     loras: Optional[List[str]] = []
-    negative_prompt: Optional[
-        str] = "watermark, text, font, signage, deformed, airbrushed, blurry,bad anatomy, disfigured, mutated, extra limb, ugly, missing limb, floating limbs, disconnected limbs, disconnected head, malformed hands, long neck, mutated hands and fingers, bad hands, missing fingers, cropped, worst quality, low quality, mutation, huge calf, bad hands, fused hand, missing hand, disappearing arms, disappearing thigh, disappearing calf, disappearing legs, missing fingers, fused fingers, abnormal eye proportion,deformed iris, abnormal hands, abnormal legs, abnormal feet, abnormal fingers, fragmented clothes"
+    negative_prompt: Optional[str] = "(multiple view, worst quality, low quality, normal quality, lowres, low details, bad art:1.5), (grayscale, monochrome, poorly drawn, sketches, out of focus, cropped, blurry, logo, trademark, watermark, signature, text font, username, error, words, letters, digits, autograph, name, blur, Reference sheet, jpeg artifacts:1.3), (disgusting, strabismus, humpbacked, skin spots, skin deformed, extra long body, extra head, bad hands, worst hands, deformed hands, extra limbs, mutated limbs, handicapped, cripple, bad face, ugly face, deformed face, bad proportions, mutation, bad anatomy, bad body, deformities:1.3), side slit, out of frame, cut off, duplicate, (((cartoon, deformed, glitch, low contrast, noisy, ugly, mundane, common, simple, disfigured)))"
     image_api_path: Optional[str] = "fal-ai/lora"
+    anime_negative_prompt: Optional[str] = "watermark, text, font, signage,deformed,airbrushed, blurry,bad anatomy, disfigured, mutated, extra limb, ugly, missing limb, floating limbs, disconnected limbs, disconnected head, malformed hands, long neck, mutated hands and fingers, bad hands, missing fingers, cropped, worst quality, low quality, mutation, huge calf, bad hands, fused hand, missing hand, disappearing arms, disappearing thigh, disappearing calf, disappearing legs, missing fingers, fused fingers, abnormal eye proportion, abnormal hands, abnormal legs, abnormal feet, abnormal fingers"
     image_model_architecture: Optional[str] = "sdxl"
     image_format: Optional[str] = "png"
     enable_safety_checker: Optional[bool] = False

@@ -8,3 +8,5 @@ GCP_CHAT_BUCKET = 'truluv-chats'
 
 #GCP_PUBLIC_IMAGE_BUCKET = 'coqui-samples'
 #GCP_CHAT_BUCKET = 'modal-agent-chat-test'
+
+GCP_BUCKET_ENDPOINT_URL = "https://storage.googleapis.com"
