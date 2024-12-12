@@ -77,6 +77,31 @@ class ModalAgent:
         self.file_service = FileService(base_path="/data")
         self.cache_service = CacheService()
 
+
+    @modal.method()
+    def moderate_character(self, agent_config:PromptConfig) -> bool:
+
+        prompt = textwrap.dedent(f"""Check if the following character text contains illegal content: 
+        Name: {agent_config.character.name}
+        Description: {agent_config.character.description}
+        Personality: {agent_config.character.personality}
+        Backstory:  {agent_config.character.backstory}
+        Seedphrase:  {agent_config.character.seed_message}
+        Appearance:  {agent_config.character.appearance}
+        Tags:  {agent_config.character.tags}
+        
+        
+        If yes, respond with TRUE otherwise respond with FALSE. No other text is necessary""")
+        messages = []
+        messages.append({"role": "user", "content": prompt})
+        llm_response = ""
+        for token in self.llm_handler.generate(messages, agent_config,temperature=0,model=agent_config.llm_config.reasoning_model,max_tokens=50):
+            llm_response += token
+
+        if "TRUE" in llm_response:
+            return True
+        else:
+            return False
     
     @modal.method()
     def get_or_create_agent_config(self, agent_config: Union[AgentConfig, PromptConfig], update_config: bool = False) -> Union[AgentConfig, PromptConfig]:
@@ -118,7 +143,7 @@ class ModalAgent:
                 
             llm_response = ""
             # Generate response using LLM
-            for token in self.llm_handler.generate(messages_without_image or messages, agent_config):
+            for token in self.llm_handler.generate(messages_without_image or messages, agent_config,frequency_penalty=0.01,presence_penalty=0.01):
                 llm_response += token
                 yield token
             
@@ -130,12 +155,12 @@ class ModalAgent:
             
             # Generate image if enabled
             if agent_config.enable_image_generation:
-                is_image_request, preallocated_image_name, public_url = self.image_handler.check_for_image_request(self.chat_handler.remove_image_messages(messages), agent_config)
+                is_image_request, preallocated_image_name, public_url,explicit = self.image_handler.check_for_image_request(self.chat_handler.remove_image_messages(messages), agent_config)
                 #print("Is imaging request:", is_image_request)
                 if is_image_request:                    
                     yield f"![image]({public_url})" 
 
-                    image_url = self.image_handler.request_image_generation(messages, agent_config, preallocated_image_name)
+                    image_url = self.image_handler.request_image_generation(messages, agent_config, preallocated_image_name,explicit)
 
                     if image_url:
                         print("Image generated successfully, url: "+image_url)

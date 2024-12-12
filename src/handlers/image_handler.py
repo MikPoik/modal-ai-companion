@@ -70,7 +70,7 @@ class ImageHandler:
         """Generate an image and save it to the specified folder."""
         try:
             
-            print("Image model: ", agent_config.image_config.image_model)
+            #print("Image model: ", agent_config.image_config.image_model)
             if (agent_config.image_config.provider == "getimg" or "https" not in agent_config.image_config.image_model)\
             and "flux-general-with-lora" not in agent_config.image_config.image_model \
             and "SG161222/Realistic_Vision_V6.0_B1_noVAE" not in agent_config.image_config.image_model \
@@ -242,7 +242,7 @@ class ImageHandler:
         print("Timeout waiting for image generation")
         return None
 
-    def check_for_image_request(self,messages: List[dict], agent_config: AgentConfig) -> tuple[bool, str, str]:
+    def check_for_image_request(self,messages: List[dict], agent_config: AgentConfig) -> tuple[bool, str, str,bool]:
         """check for Image request"""
     
         local_messages = messages.copy()
@@ -282,13 +282,11 @@ class ImageHandler:
     User: {local_messages[-2]['content']}
     Character: {local_messages[-1]['content']}
     
-    Format response as:
+    Additionally, review the character's message to determine R-rating, if character is clearly naked (NC-17) or if unsure then rating is R.
+    Format response as a structured JSON:
     {{
-        "result": True/False,
-        "reasoning": "Brief explanation of the visual trigger, user and character",
-        "visual_type": "outfit_change/user_request/character_action/implied_request",
-        "trigger_phrase": "Quote the relevant triggering phrase or action, user and character"
-    }}"
+        "result": true/false,
+        "r-rating": "NC-17,R"
     }}""").rstrip()
         #print(prompt)
         local_messages.append({"role": "user", "content": prompt})    
@@ -298,16 +296,29 @@ class ImageHandler:
                                                temperature=0.2,
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider,
-                                               stop_words=[',\n']
+                                               max_tokens=50
                                               ):
             reasoning_response += token
         #print(f"Reasoning response: {reasoning_response}")
-        if "true" in reasoning_response.lower():
+        explicit = False
+        try:
+            json_data = json.loads(reasoning_response.strip())
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON response: {str(e)}")
+            
+        json_data = json.loads(reasoning_response)
+        nudity_status = json_data.get("r-rating", "R").lower()
+        
+        if "nc-17" in nudity_status.lower():
+            explicit = True
+
+        result_status = json_data.get("result", False)
+        if result_status:
             preallocated_name, public_url = self.file_service.generate_preallocated_url(agent_config, "images")
-            return True, preallocated_name, public_url
-        return False, "", ""
+            return True, preallocated_name, public_url, explicit
+        return False, "", "", False
     
-    def request_image_generation(self,messages: List[dict],agent_config: AgentConfig,preallocated_image_name:str = ""):
+    def request_image_generation(self,messages: List[dict],agent_config: AgentConfig,preallocated_image_name:str = "",explicit= False):
         """request image generation"""
     
         def get_last_ten_messages_with_system(self, messages: List[dict]) -> List[dict]:
@@ -322,7 +333,10 @@ class ImageHandler:
     
             return last_ten_messages
     
-        local_messages = messages.copy()          
+        local_messages = messages.copy()
+        sfw_prompt =  " Ensure the image description does not contain explicit content."
+        if explicit:
+            sfw_prompt= ""
             
         prompt = textwrap.dedent(f"""
         <Instruction>
@@ -377,8 +391,7 @@ class ImageHandler:
         Maintain consistency with established character traits.
         Use high-density visual descriptors for maximum detail.
         Match the descriptors to the align with last message context: {local_messages[-1]['content']}
-        Keep it short and consise.
-        """).rstrip()
+        Keep it short and consise and avoid repeating descriptions.{sfw_prompt}""").rstrip()
 
         image_description_response = ""
         local_messages.append({"role": "user", "content": prompt})
@@ -394,13 +407,21 @@ class ImageHandler:
         cleaned_response = image_description_response.replace("```json", "").replace("```", "").strip()
         json_data = json.loads(cleaned_response)
         image_prompt_list = self.parse_appearance(json_data)
-        image_prompt = ', '.join(filter(None, image_prompt_list))
-
+        image_prompt = ', '.join(filter(None, self.remove_duplicate_strings(image_prompt_list)))
+        
+        if not explicit:
+            agent_config.image_config.negative_prompt = "((nsfw, explicit, uncensored, nudity, partial clothes)), "+ agent_config.image_config.negative_prompt
+            agent_config.image_config.anime_negative_prompt = "((nsfw, explicit, uncensored, nudity,partial clothes)), "+ agent_config.image_config.anime_negative_prompt
+            
         image_url = self.generate_image(image_prompt,agent_config,preallocated_image_name=preallocated_image_name)
         #print(image_url)
         if image_url:
             return f"![{image_prompt}]({image_url})"
         return None
+
+    def remove_duplicate_strings(self, image_prompt_list: List[str]) -> List[str]:
+        """Remove duplicate strings from the list."""
+        return list(dict.fromkeys(image_prompt_list))
     
     def parse_appearance(self, appearance_obj):
         """Recursively traverse appearance object and join all non-empty string values, with error handling."""
@@ -444,7 +465,7 @@ class ImageHandler:
                         # Append extracted keywords to appearance
                         if 'Appearance' in msg['content']:
                             msg['content'] = msg['content'].replace('Appearance: ', f"Appearance: {keywords},")
-                            print(msg['content'])
+                            #print(msg['content'])
                         break  # Update only the first system message
         local_messages = [msg for msg in local_messages if msg.get('tag') != 'image'] 
         return local_messages

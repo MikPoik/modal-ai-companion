@@ -41,10 +41,10 @@ class LLMConfig(BaseModel):
     Character Profile:
     - Name: {char_name}
     - Appearance: {char_appearance}
-    - Core Identity and Personality: {char_description},{char_personality}
+    - Core Identity and Personality: {char_personality}
     - Backstory: {char_backstory}
     
-    - Voice & Mannerisms: {tags}
+    - Voice & Mannerisms: {tags}, {char_description}
     - Dialogue style: {char_seed}
 
     Role-play Guidelines:
@@ -52,25 +52,25 @@ class LLMConfig(BaseModel):
     - Feel free to introduce minor plot twists or reveal new aspects of your character when contextually appropriate
     - Balance predictability with surprise to keep interactions dynamic and engaging
     - Characters have the ability to make their own decisions and respond accordingly, even if its against user's intentions
+    - Avoid stereotyping or assumptions about gender roles
     - Instead of using name prefix use double quotes for speech without prefixes.
     - Character actions should be described in third person using asterisks, avoid nesting speech with actions.
-    - Balance speech with actions to keep the conversation flowing and engaging
+    - Balance speech with actions to keep the conversation flowing and engaging to avoid overwhelming the user.
 
     Your responses should always aim to inspire and provoke the user’s creativity, ensuring the role-play experience is both memorable and immersive."""
                                                    ).rstrip()
 
     max_tokens: int = 512
     context_size: int = 32000
-    model: Optional[str] = "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"
+    model: Optional[str] = "Sao10K/L3.1-70B-Euryale-v2.2"
     reasoning_model: Optional[str] = "mistralai/Mixtral-8x22B-Instruct-v0.1"
     reasoning_provider: Optional[str] = "togetherai"
     provider: Optional[str] = "deepinfra"
     reasoning_temperature: float = 0.4
     temperature: float = 0.7
-    top_p: float = 1.0
-    frequency_penalty: float = 0.0
-    presence_penalty: float = 0.0
-    repetition_penalty: float = 1.0
+    top_p: float = 1
+    frequency_penalty: float = 0
+    presence_penalty: float = 0
     stop: Optional[List[str]] = None
 
 
@@ -86,9 +86,9 @@ class ImageConfig(BaseModel):
     scheduler: Optional[str] = "DPM++ 2M SDE"
     clip_skip: Optional[int] = 2
     loras: Optional[List[str]] = []
-    negative_prompt: Optional[str] = "(multiple view, worst quality, low quality, normal quality, lowres, low details, bad art:1.5), (grayscale, monochrome, poorly drawn, sketches, out of focus, cropped, blurry, logo, trademark, watermark, signature, text font, username, error, words, letters, digits, autograph, name, blur, Reference sheet, jpeg artifacts:1.3), (disgusting, strabismus, humpbacked, skin spots, skin deformed, extra long body, extra head, bad hands, worst hands, deformed hands, extra limbs, mutated limbs, handicapped, cripple, bad face, ugly face, deformed face, bad proportions, mutation, bad anatomy, bad body, deformities:1.3), side slit, out of frame, cut off, duplicate, (((cartoon, deformed, glitch, low contrast, noisy, ugly, mundane, common, simple, disfigured)))"
+    negative_prompt: Optional[str] = "(multiple view, worst quality, low quality, normal quality, lowres, low details, bad art:1.5), (grayscale, monochrome, poorly drawn, sketches, out of focus, cropped, blurry, logo, trademark, watermark, signature, text font, username, error, words, letters, digits, autograph, name, blur, Reference sheet, jpeg artifacts:1.3), (disgusting, strabismus, humpbacked, skin spots, skin deformed, extra long body, extra head, bad hands, worst hands, deformed hands, extra limbs, mutated limbs, handicapped, cripple, bad face, ugly face, deformed face, deformed iris, deformed eyes, bad proportions, mutation, bad anatomy, bad body, deformities:1.3), side slit, out of frame, cut off, duplicate, (((cartoon, deformed, glitch, low contrast, noisy, ugly, mundane, common, simple, disfigured)))"
     image_api_path: Optional[str] = "fal-ai/lora"
-    anime_negative_prompt: Optional[str] = "watermark, text, font, signage,deformed,airbrushed, blurry,bad anatomy, disfigured, mutated, extra limb, ugly, missing limb, floating limbs, disconnected limbs, disconnected head, malformed hands, long neck, mutated hands and fingers, bad hands, missing fingers, cropped, worst quality, low quality, mutation, huge calf, bad hands, fused hand, missing hand, disappearing arms, disappearing thigh, disappearing calf, disappearing legs, missing fingers, fused fingers, abnormal eye proportion, abnormal hands, abnormal legs, abnormal feet, abnormal fingers"
+    anime_negative_prompt: Optional[str] = "watermark, text, font, signage,deformed,airbrushed, blurry,bad anatomy, disfigured, mutated, extra limb, ugly, missing limb, floating limbs, disconnected limbs, disconnected head, malformed hands, long neck, mutated hands and fingers, bad hands, missing fingers, cropped, worst quality, low quality, mutation, huge calf, bad hands, fused hand, missing hand, disappearing arms, disappearing thigh, disappearing calf, disappearing legs, missing fingers, fused fingers, abnormal eye proportion, abnormal hands, abnormal legs, abnormal feet, abnormal fingers,duplicate, extra head"
     image_model_architecture: Optional[str] = "sdxl"
     image_format: Optional[str] = "png"
     enable_safety_checker: Optional[bool] = False
