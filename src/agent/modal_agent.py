@@ -81,7 +81,7 @@ class ModalAgent:
     @modal.method()
     def moderate_character(self, agent_config:PromptConfig) -> bool:
 
-        prompt = textwrap.dedent(f"""Check if the following character text contains illegal content: 
+        prompt = textwrap.dedent(f"""Check if the following character profile contains any illegal content, such as incest, underage subject, child abuse, pedophilia: 
         Name: {agent_config.character.name}
         Description: {agent_config.character.description}
         Personality: {agent_config.character.personality}
@@ -91,14 +91,18 @@ class ModalAgent:
         Tags:  {agent_config.character.tags}
         
         
-        If yes, respond with TRUE otherwise respond with FALSE. No other text is necessary""")
+        If yes, respond with TRUE otherwise respond with FALSE. No other text is necessary.
+        Format response as a boolean, return only a json with following field "moderation_result":
+        {{
+            "moderation_result": True/False
+        }}""")
         messages = []
         messages.append({"role": "user", "content": prompt})
         llm_response = ""
         for token in self.llm_handler.generate(messages, agent_config,temperature=0,model=agent_config.llm_config.reasoning_model,max_tokens=50):
             llm_response += token
-
-        if "TRUE" in llm_response:
+        #print(llm_response)
+        if "true" in llm_response.lower():
             return True
         else:
             return False
