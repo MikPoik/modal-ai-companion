@@ -33,7 +33,7 @@ class ChatHandler:
         # Get the formatted system prompt
         system_prompt = self._format_system_prompt(
             agent_config, updated_backstory=relevant_backstory)
-        #print(f"System prompt fromatted: {system_prompt}")
+        print(f"System prompt fromatted: {system_prompt}")
         messages.append({
             "tag": "initial_system_prompt",
             "role": "system",

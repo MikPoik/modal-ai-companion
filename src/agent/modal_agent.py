@@ -144,12 +144,22 @@ class ModalAgent:
             messages_without_image = None
             if agent_config.enable_image_generation:
                 messages_without_image = self.chat_handler.remove_image_messages(messages)
-                
+
+            print(len(messages))
+            print(messages)
             llm_response = ""
-            # Generate response using LLM
-            for token in self.llm_handler.generate(messages_without_image or messages, agent_config,frequency_penalty=0.01,presence_penalty=0.01):
-                llm_response += token
-                yield token
+            
+            #If seed not sent yet, send seedphrase instead of generation
+            if len(messages) == 2 and agent_config.character and agent_config.character.seed_message:
+                print("SEED MESSAGE")
+                yield agent_config.character.seed_message
+                llm_response = agent_config.character.seed_message
+            else:
+                # Generate response using LLM
+                print("NORMAL CONVO")
+                for token in self.llm_handler.generate(messages_without_image or messages, agent_config,frequency_penalty=0.01,presence_penalty=0.01):
+                    llm_response += token
+                    yield token
             
             messages.append({
                     "tag": "text",
