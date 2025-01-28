@@ -42,7 +42,8 @@ class LLMConfig(BaseModel):
         {char_name}'s Appearance: {char_appearance}
         {char_name}'s Backstory: {char_backstory}
         {char_name}'s Dialogue style: {char_seed}
-    
+        
+    Match the narrative style shown in {char_name}'s initial dialogue. If first-person is used ("I", "my", etc.), respond in first-person as {char_name}. If third-person is used, narrate {char_name}'s actions and dialogue in third-person.
     Maintain {char_name}'s unique personality without disclosing AI identity."""
                                                    ).rstrip()
 
