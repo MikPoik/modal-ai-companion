@@ -82,9 +82,14 @@ class ImageConfig(BaseModel):
     provider: str = "fal.ai"
 
 
+class VoiceConfig(BaseModel):
+    enable_voice: bool = False
+    voice_model: str = "hexgrad/Kokoro-82M"
+    
 class AgentConfig(BaseConfig):
     llm_config: LLMConfig = LLMConfig()
     image_config: ImageConfig = ImageConfig()
+    voice_config: VoiceConfig = VoiceConfig()
     character: Optional[Character] = Character()
     enable_image_generation: bool = True
     update_config: bool = False

@@ -72,6 +72,7 @@ class ModalAgent:
         self.index_handler = IndexHandler()
         self.chat_handler = ChatHandler()
         self.config_manager = AgentConfigHandler()
+        self.voice_handler = VoiceHandler()
     
         # Initialize services
         self.file_service = FileService(base_path="/data")
@@ -156,6 +157,12 @@ class ModalAgent:
                 for token in self.llm_handler.generate(messages_without_image or messages, agent_config,frequency_penalty=0.01,presence_penalty=0.01):
                     llm_response += token
                     yield token
+                    
+                # Generate voice if enabled
+                if agent_config.voice_config.enable_voice:
+                    voice_url = self.voice_handler.generate_voice(llm_response, agent_config)
+                    if voice_url:
+                        yield f"\n[voice]({voice_url})"
             
             messages.append({
                     "tag": "text",
