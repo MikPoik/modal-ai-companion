@@ -70,7 +70,7 @@ async def main():
         await init_character(client, "test/characters/velvet.yaml")
 
         # Initial scene setup with structured prompt
-        initial_prompt = """Now begin role-play with me."""
+        initial_prompt = """Write character's next response"""
         await send_message(client, initial_prompt)
 
 

@@ -24,6 +24,7 @@ class VoiceHandler:
 
         response = requests.post(self.api_url, headers=headers, json=data)
         response.raise_for_status()
+        print(response.json())
         
         result = response.json()
         if "audio" not in result:
@@ -32,12 +33,12 @@ class VoiceHandler:
         # Extract base64 data after the data:audio/wav;base64, prefix
         base64_audio = result["audio"].split("base64,")[1]
         audio_data = base64.b64decode(base64_audio)
-        
+        preallocated_audio_name, public_url = self.file_service.generate_preallocated_url(agent_config, "audio",file_format=".wav")
         voice_url = self.file_service.save_binary_to_bucket(
             audio_data,
             agent_config,
             "voice",
-            f"{agent_config.context_id}.wav"
+            preallocated_name=preallocated_audio_name
         )
         
         return voice_url

@@ -67,9 +67,9 @@ class FileService:
 
         return public_url
         
-    def save_binary_to_bucket(self, binary_data: bytes, agent_config: AgentConfig, sub_folder: str = "", preallocated_image_name: str = "") -> str:
+    def save_binary_to_bucket(self, binary_data: bytes, agent_config: AgentConfig, sub_folder: str = "", preallocated_name: str = "") -> str:
         """Save binary data directly to bucket and return public URL."""
-        filename = preallocated_image_name if preallocated_image_name else f"{shortuuid.uuid()}.png"
+        filename = preallocated_name if preallocated_name else f"{shortuuid.uuid()}.png"
 
         if sub_folder and not sub_folder.endswith('/'):
             sub_folder += "/"
@@ -85,9 +85,9 @@ class FileService:
 
         return public_url
             
-    def generate_preallocated_url(self, agent_config: AgentConfig, sub_folder: str = "") -> tuple[str, str]:
+    def generate_preallocated_url(self, agent_config: AgentConfig, sub_folder: str = "",file_format=".png") -> tuple[str, str]:
         """Generate preallocated filename and public URL."""
-        filename = f"{shortuuid.uuid()}.png"
+        filename = f"{shortuuid.uuid()}.{file_format}"
         if sub_folder and not sub_folder.endswith('/'):
             sub_folder += "/"
 

@@ -87,7 +87,7 @@ class ImageHandler:
                         image_data,
                         agent_config,
                         folder,
-                        preallocated_image_name=preallocated_image_name
+                        preallocated_name=preallocated_image_name
                     )
                 return None
             else:
