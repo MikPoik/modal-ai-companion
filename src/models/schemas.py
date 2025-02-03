@@ -83,7 +83,7 @@ class ImageConfig(BaseModel):
 
 
 class VoiceConfig(BaseModel):
-    enable_voice: bool = False
+    enable_voice: bool = True
     voice_model: str = "hexgrad/Kokoro-82M"
     
 class AgentConfig(BaseConfig):

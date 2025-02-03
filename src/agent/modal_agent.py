@@ -5,6 +5,7 @@ from src.handlers.image_handler import ImageHandler
 from src.handlers.index_handler import IndexHandler
 from src.handlers.chat_handler import ChatHandler
 from src.handlers.agent_config_handler import AgentConfigHandler
+from src.handlers.voice_handler import VoiceHandler
 from src.services.file_service import FileService
 from src.services.cache_service import CacheService
 from typing import Generator, Optional, Dict, Union

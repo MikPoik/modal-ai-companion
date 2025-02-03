@@ -23,6 +23,7 @@ class VoiceHandler:
 
         response = requests.post(self.api_url, headers=headers, json=data)
         response.raise_for_status()
+        print(response.json())
         
         # Save audio to GCP bucket
         audio_data = response.content
