@@ -1,6 +1,7 @@
 
 import os
 import requests
+import base64
 from src.models.schemas import AgentConfig
 from src.services.file_service import FileService
 
@@ -23,10 +24,15 @@ class VoiceHandler:
 
         response = requests.post(self.api_url, headers=headers, json=data)
         response.raise_for_status()
-        print(response.json())
         
-        # Save audio to GCP bucket
-        audio_data = response.content
+        result = response.json()
+        if "audio" not in result:
+            raise ValueError("No audio data in response")
+            
+        # Extract base64 data after the data:audio/wav;base64, prefix
+        base64_audio = result["audio"].split("base64,")[1]
+        audio_data = base64.b64decode(base64_audio)
+        
         voice_url = self.file_service.save_binary_to_bucket(
             audio_data,
             agent_config,
