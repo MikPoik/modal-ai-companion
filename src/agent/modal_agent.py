@@ -143,9 +143,10 @@ class ModalAgent:
                 agent_config       # Pass the AgentConfig object, not chat history
             )
 
-            messages_without_image = None
+            messages_without_media = None
             if agent_config.enable_image_generation:
-                messages_without_image = self.chat_handler.remove_image_messages(messages)
+                #remove images and audios from messages
+                messages_without_media = self.chat_handler.remove_multimedia_messages(messages)
 
             llm_response = ""
 
@@ -155,7 +156,7 @@ class ModalAgent:
                 llm_response = agent_config.character.seed_message
             else:
                 # Generate response using LLM
-                for token in self.llm_handler.generate(messages_without_image or messages, agent_config,frequency_penalty=0.01,presence_penalty=0.01):
+                for token in self.llm_handler.generate(messages_without_media or messages, agent_config,frequency_penalty=0.01,presence_penalty=0.01):
                     llm_response += token
                     yield token
                     
@@ -163,6 +164,12 @@ class ModalAgent:
                 if agent_config.voice_config.enable_voice:
                     voice_url = self.voice_handler.generate_voice(llm_response, agent_config)
                     if voice_url:
+                        if voice_url:
+                            messages.append({
+                                "tag": "voice",
+                                "role": "assistant",
+                                "content": voice_url
+                            })
                         yield f"\n[voice]({voice_url})"
             
             messages.append({
@@ -173,12 +180,12 @@ class ModalAgent:
             
             # Generate image if enabled
             if agent_config.enable_image_generation:
-                is_image_request, preallocated_image_name, public_url,explicit = self.image_handler.check_for_image_request(self.chat_handler.remove_image_messages(messages), agent_config)
+                is_image_request, preallocated_image_name, public_url,explicit = self.image_handler.check_for_image_request(self.chat_handler.remove_multimedia_messages(messages), agent_config)
                 #print("Is imaging request:", is_image_request)
                 if is_image_request:                    
                     yield f"![image]({public_url})" 
 
-                    image_url = self.image_handler.request_image_generation(messages, agent_config, preallocated_image_name,explicit)
+                    image_url = self.image_handler.request_image_generation(self.chat_handler.remove_audio_messages(messages), agent_config, preallocated_image_name,explicit)
 
                     if image_url:
                         print("Image generated successfully, url: "+image_url)

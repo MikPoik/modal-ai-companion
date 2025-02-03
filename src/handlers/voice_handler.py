@@ -17,14 +17,19 @@ class VoiceHandler:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
+        # Remove all *action* text between asterisks
+        import re
+        clean_text = re.sub(r"\*\*(.*?)\*\*", "", text)
         
+        if not clean_text:
+            clean_text = text
         data = {
-            "text": text
+            "text": clean_text,
+            "preset_voice": agent_config.voice_config.voice_preset
         }
 
         response = requests.post(self.api_url, headers=headers, json=data)
         response.raise_for_status()
-        print(response.json())
         
         result = response.json()
         if "audio" not in result:
@@ -33,7 +38,7 @@ class VoiceHandler:
         # Extract base64 data after the data:audio/wav;base64, prefix
         base64_audio = result["audio"].split("base64,")[1]
         audio_data = base64.b64decode(base64_audio)
-        preallocated_audio_name, public_url = self.file_service.generate_preallocated_url(agent_config, "audio",file_format=".wav")
+        preallocated_audio_name, public_url = self.file_service.generate_preallocated_url(agent_config, "audio",file_format="wav")
         voice_url = self.file_service.save_binary_to_bucket(
             audio_data,
             agent_config,

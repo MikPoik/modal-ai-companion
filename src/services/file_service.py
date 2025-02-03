@@ -85,7 +85,7 @@ class FileService:
 
         return public_url
             
-    def generate_preallocated_url(self, agent_config: AgentConfig, sub_folder: str = "",file_format=".png") -> tuple[str, str]:
+    def generate_preallocated_url(self, agent_config: AgentConfig, sub_folder: str = "",file_format="png") -> tuple[str, str]:
         """Generate preallocated filename and public URL."""
         filename = f"{shortuuid.uuid()}.{file_format}"
         if sub_folder and not sub_folder.endswith('/'):

@@ -85,6 +85,7 @@ class ImageConfig(BaseModel):
 class VoiceConfig(BaseModel):
     enable_voice: bool = True
     voice_model: str = "hexgrad/Kokoro-82M"
+    voice_preset: str = "af_bella"
     
 class AgentConfig(BaseConfig):
     llm_config: LLMConfig = LLMConfig()

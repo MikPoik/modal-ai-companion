@@ -191,6 +191,16 @@ class ChatHandler:
 
         return [msg for msg in messages if msg.get('tag') != 'image']
 
+    def remove_audio_messages(self, messages: List[dict]) -> List[dict]:
+        """Remove messages that contain image tag from chat history."""
+
+        return [msg for msg in messages if msg.get('tag') != 'audio']
+
+    def remove_multimedia_messages(self, messages: List[dict]) -> List[dict]:
+        """Remove messages that contain image tag from chat history."""
+
+        return [msg for msg in messages if msg.get('tag') not in ['image', 'voice']]
+        
     def keep_last_image_message(self, messages: List[dict]) -> List[dict]:
         """Keep the last image in chat history but remove all prior ones."""
 
