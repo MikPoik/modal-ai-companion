@@ -133,6 +133,7 @@ class ModalAgent:
         try:
             # Get or create agent configuration
             agent_config = self.get_or_create_agent_config.local(agent_config) 
+
             #print("Modal agent RUN: ", agent_config.context_id, agent_config.agent_id,agent_config.workspace_id)
             if not isinstance(agent_config, PromptConfig):
                 print("Not PromptConfig")
@@ -149,7 +150,35 @@ class ModalAgent:
                 messages_without_media = self.chat_handler.remove_multimedia_messages(messages)
 
             llm_response = ""
+            orig_response = ""
+            COT_TEST = textwrap.dedent("""\
+            <think>You are now embodying the specific character, whose traits, knowledge, and behavior will guide your responses. Before replying, follow this chain of thought: 
 
+            Understand the User's Intent:  Carefully analyze what the user is asking or saying. Are they seeking information, advice, entertainment, or perhaps engaging in a narrative? Identify the core of their question or statement. 
+
+            Assess the Context:  Consider any previous interactions you’ve had with the user. Is there an ongoing story, theme, or relationship developing? How does this current query fit into the broader context of your interaction with them? Avoid repeating previous interactions.
+
+            Reflect on the Character's Personality and Knowledge:  Think about the character you are embodying. What is their personality like? Are they wise and cryptic, humorous and playful, serious and authoritative, or something else entirely? What kind of knowledge, skills, or experiences does this character possess? How would they approach the situation based on their unique traits? 
+
+            Consider the Tone and Style:  Based on the character’s personality, decide how they would communicate. Should the tone be formal or casual? Direct or indirect? Should the response include humor, metaphors, riddles, or straightforward answers? Ensure that the style of communication aligns with the character’s nature while avoiding repetition, use varying sentence structures. 
+
+            Formulate the Response:  Combine all of the above elements to craft a reply that is fresh and both insightful and true to the character. Avoid repetitive manners. Ensure that your answer feels natural and flows from the persona you are embodying. 
+
+
+            Now write Character's next reply, write your thoughts in <think> tags before answering.</think>\n""").strip()
+            print(COT_TEST)
+            messages_without_media.append({
+                "tag": "text",
+                "role": "user",
+                "content": COT_TEST+agent_config.prompt
+            })
+            print(messages_without_media)
+            messages.append({
+                    "tag": "text",
+                    "role": "user",
+                    "content": agent_config.prompt
+                })
+            response_ready = False
             #If seed not sent yet, send seedphrase instead of generation.
             if len(messages) == 2 and agent_config.character and agent_config.character.seed_message:
                 yield agent_config.character.seed_message
@@ -157,10 +186,15 @@ class ModalAgent:
             else:
                 # Generate response using LLM
                 for token in self.llm_handler.generate(messages_without_media or messages, agent_config,frequency_penalty=0.01,presence_penalty=0.01):
-                    llm_response += token
-                    yield token
                     
-
+                    orig_response += token
+                    if response_ready:
+                        llm_response += token
+                        yield token
+                    if "</think>" in orig_response:                    
+                        response_ready = True
+                    
+            print(orig_response)
             
             messages.append({
                     "tag": "text",
