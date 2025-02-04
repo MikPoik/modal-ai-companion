@@ -44,6 +44,7 @@ class LLMConfig(BaseModel):
         {char_name}'s Dialogue style: {char_seed}
         
     Match the narrative style shown in {char_name}'s initial dialogue. If first-person is used ("I", "my", etc.), respond in first-person as {char_name}. If third-person is used, narrate {char_name}'s actions and dialogue in third-person.
+    Keep the dialogue fresh by avoiding repetition.
     Maintain {char_name}'s unique personality without disclosing AI identity."""
                                                    ).rstrip()
 
@@ -85,7 +86,7 @@ class ImageConfig(BaseModel):
 class VoiceConfig(BaseModel):
     enable_voice: bool = True
     voice_model: str = "hexgrad/Kokoro-82M"
-    voice_preset: str = "af_bella"
+    voice_preset: str = "none" #af_bella
     
 class AgentConfig(BaseConfig):
     llm_config: LLMConfig = LLMConfig()

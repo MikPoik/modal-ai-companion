@@ -160,17 +160,7 @@ class ModalAgent:
                     llm_response += token
                     yield token
                     
-                # Generate voice if enabled
-                if agent_config.voice_config.enable_voice:
-                    voice_url = self.voice_handler.generate_voice(llm_response, agent_config)
-                    if voice_url:
-                        if voice_url:
-                            messages.append({
-                                "tag": "voice",
-                                "role": "assistant",
-                                "content": voice_url
-                            })
-                        yield f"\n[voice]({voice_url})"
+
             
             messages.append({
                     "tag": "text",
@@ -178,6 +168,18 @@ class ModalAgent:
                     "content": f"{llm_response}"
                 })
             
+            # Generate voice if enabled
+            if agent_config.voice_config.enable_voice and agent_config.voice_config.voice_preset != "none":
+                voice_url = self.voice_handler.generate_voice(llm_response, agent_config)
+                if voice_url:
+                    if voice_url:
+                        messages.append({
+                            "tag": "voice",
+                            "role": "assistant",
+                            "content": f"![voice]({voice_url})"
+                        })
+                    yield f"![voice]({voice_url})"
+                    
             # Generate image if enabled
             if agent_config.enable_image_generation:
                 is_image_request, preallocated_image_name, public_url,explicit = self.image_handler.check_for_image_request(self.chat_handler.remove_multimedia_messages(messages), agent_config)
@@ -194,7 +196,7 @@ class ModalAgent:
                             "role": "assistant",
                             "content": f"{image_url}"
                         })
-                        yield image_url
+                        #yield image_url
                         
             # Save updated chat history
             self.chat_handler.save_chat_history(messages, agent_config)

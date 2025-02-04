@@ -78,7 +78,7 @@ class FileService:
         public_url = f"{self.public_url_base}/{sub_folder}{agent_config.workspace_id}/{filename}"
         # Create directory if needed
         image_path.parent.mkdir(parents=True, exist_ok=True)
-        print(f"Saving image to bucket {image_path}")
+        print(f"Saving file to bucket {image_path}")
 
         # Save binary data directly
         image_path.write_bytes(binary_data)

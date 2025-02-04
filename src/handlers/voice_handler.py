@@ -19,10 +19,13 @@ class VoiceHandler:
         }
         # Remove all *action* text between asterisks
         import re
-        clean_text = re.sub(r"\*\*(.*?)\*\*", "", text)
-        
+        clean_text = re.sub(r"\*([^*]+)\*", "", text)
+        clean_text = clean_text.strip()
+
+        #check if the text is empty and restore original text
         if not clean_text:
             clean_text = text
+            
         data = {
             "text": clean_text,
             "preset_voice": agent_config.voice_config.voice_preset
