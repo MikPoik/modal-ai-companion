@@ -74,7 +74,7 @@ class ModalAgent:
         self.chat_handler = ChatHandler()
         self.config_manager = AgentConfigHandler()
         self.voice_handler = VoiceHandler()
-    
+
         # Initialize services
         self.file_service = FileService(base_path="/data")
         self.cache_service = CacheService()
@@ -91,8 +91,8 @@ class ModalAgent:
         Seedphrase:  {agent_config.character.seed_message}
         Appearance:  {agent_config.character.appearance}
         Tags:  {agent_config.character.tags}
-        
-        
+
+
         If yes, respond with TRUE otherwise respond with FALSE. No other text is necessary.
         Format response as a boolean, return only a json with following field "moderation_result":
         {{
@@ -108,7 +108,7 @@ class ModalAgent:
             return True
         else:
             return False
-    
+
     @modal.method()
     def get_or_create_agent_config(self, agent_config: Union[AgentConfig, PromptConfig], update_config: bool = False) -> Union[AgentConfig, PromptConfig]:
         """Handle agent configuration management"""
@@ -121,12 +121,12 @@ class ModalAgent:
                 del base_dict['prompt']  # Remove prompt if it exists
             return PromptConfig(**base_dict, prompt=agent_config.prompt)
         return base_config
-    
+
     @modal.method()
     async def generate_avatar(self, agent_config:PromptConfig) -> Optional[str]:
         """Generate avatar using image handler"""
         return self.image_handler.generate_avatar(agent_config)
-    
+
     @modal.method(is_generator=True)
     def run(self, agent_config: PromptConfig) -> Generator[str, None, None]:
         """Main method to handle generation requests"""
@@ -137,7 +137,7 @@ class ModalAgent:
             #print("Modal agent RUN: ", agent_config.context_id, agent_config.agent_id,agent_config.workspace_id)
             if not isinstance(agent_config, PromptConfig):
                 print("Not PromptConfig")
-                
+
             # Get chat history and prepare messages
             messages = self.chat_handler.prepare_messages(
                 agent_config.prompt,  # Pass the prompt string
@@ -145,33 +145,33 @@ class ModalAgent:
             )
             print(messages)
             messages_without_media = []
+            # First handle multimedia filtering if needed
             if agent_config.enable_image_generation:
-                #remove images and audios from messages
-                messages_without_media.append(self.chat_handler.remove_multimedia_messages(messages))
+                messages_without_media = self.chat_handler.remove_multimedia_messages(messages)
+            else:
+                messages_without_media = messages.copy()
 
             llm_response = ""
             orig_response = ""
             COT_TEST = textwrap.dedent("""\
             <think>Before responding, consider:    
 
-            What’s the user’s intent—plot, lore, banter, or a twist? Are there hidden cues in their tone or references to past events?  
-            How does the character’s personality, knowledge, and motivation shape this response? What emotions or goals are at play?  
+            What's the user's intent—plot, lore, banter, or a twist? Are there hidden cues in their tone or references to past events?  
+            How does the character's personality, knowledge, and motivation shape this response? What emotions or goals are at play?  
             Should the tone be formal, casual, quirky, explicit or emotional? How can vivid details or reactions keep the scene engaging?  
             Are you repeating phrases or ideas? Can you mix pacing to maintain rhythm and interest?  
             Can the character introduce tension or challenge the user's perspective while preserving the user's autonomy?
 
             Remember, Character will act on their impulses, good or bad and whatever the outcome.
-            
+
             Match the narrative style shown in initial dialogue. If first-person is used (I, my, etc.), respond directly in first-person as Character. If third-person is used, use *show*,dont tell in third-person.
 
             Now, write your brief thoughts in few sentences <think> tags before answering.</think>\n
             """).strip()
-            print(COT_TEST)
-            messages_without_media.append({
-                "tag": "text",
-                "role": "user",
-                "content": COT_TEST+"\n\n"+agent_config.prompt
-            })
+
+            # Replace the last user message with COT_TEST appended
+            if messages_without_media and messages_without_media[-1]["role"] == "user":
+                messages_without_media[-1]["content"] = COT_TEST + "\n\n" + messages_without_media[-1]["content"]
 
             messages.append({
                     "tag": "text",
@@ -187,22 +187,22 @@ class ModalAgent:
             else:
                 # Generate response using LLM
                 for token in self.llm_handler.generate(messages_without_media or messages, agent_config,frequency_penalty=0.01,presence_penalty=0.01):
-                    
+
                     orig_response += token
                     if response_ready:
                         llm_response += token
                         yield token
                     if "</think>" in orig_response:                    
                         response_ready = True
-                    
+
             print(orig_response)
-            
+
             messages.append({
                     "tag": "text",
                     "role": "assistant",
                     "content": f"{orig_response}"
                 })
-            
+
             # Generate voice if enabled
             if agent_config.voice_config.enable_voice and agent_config.voice_config.voice_preset != "none":
                 voice_url = self.voice_handler.generate_voice(llm_response, agent_config)
@@ -214,7 +214,7 @@ class ModalAgent:
                             "content": f"![voice]({voice_url})"
                         })
                     yield f"![voice]({voice_url})"
-                    
+
             # Generate image if enabled
             if agent_config.enable_image_generation:
                 is_image_request, preallocated_image_name, public_url,explicit = self.image_handler.check_for_image_request(self.chat_handler.remove_multimedia_messages(messages), agent_config)
@@ -232,10 +232,10 @@ class ModalAgent:
                             "content": f"{image_url}"
                         })
                         #yield image_url
-                        
+
             # Save updated chat history
             self.chat_handler.save_chat_history(messages, agent_config)
-    
+
         except Exception as e:
             print(f"Error in run method: {str(e)}")
             #yield f"Error: {str(e)}"
@@ -249,23 +249,23 @@ class ModalAgent:
         except Exception as e:
             print(f"Error deleting chat history: {str(e)}")
             return False
-    
+
     @modal.method()
     def delete_workspace(self, agent_config: AgentConfig) -> bool:
         """Delete all files and configurations associated with a workspace."""
         try:
             # Delete chat history
             chat_deleted = self.chat_handler.delete_chat_history(agent_config)
-    
+
             # Delete agent configuration
             config_deleted = self.config_manager.delete_config(
                 workspace_id=agent_config.workspace_id,
                 agent_id=agent_config.agent_id
             )
-    
+
             # Clear any cached configurations
             self.config_manager.clear_cache(agent_config.workspace_id, agent_config.agent_id)
-    
+
             return chat_deleted and config_deleted
         except Exception as e:
             print(f"Error deleting workspace: {str(e)}")
@@ -297,7 +297,7 @@ class ModalAgent:
         except Exception as e:
             print(f"Error deleting message pairs: {str(e)}")
             return False
-            
+
 
     @modal.method()
     def get_chat_history(self, agent_config: AgentConfig) -> List[Dict]:
@@ -306,10 +306,10 @@ class ModalAgent:
             #print(f"Getting chat history for agent config: {agent_config.context_id} {agent_config.agent_id}, {agent_config.workspace_id}")
             # Get agent config first to ensure it exists and is up to date
             agent_config = self.get_or_create_agent_config.local(agent_config)
-    
+
             # Use the chat handler to get formatted chat history
             history = self.chat_handler.get_chat_history(agent_config)
-            
+
             return history
         except Exception as e:
             print(f"Error getting chat history: {str(e)}")
