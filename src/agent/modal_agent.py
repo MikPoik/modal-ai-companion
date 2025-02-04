@@ -143,41 +143,42 @@ class ModalAgent:
                 agent_config.prompt,  # Pass the prompt string
                 agent_config       # Pass the AgentConfig object, not chat history
             )
-
-            messages_without_media = None
+            print(messages)
+            messages_without_media = []
             if agent_config.enable_image_generation:
                 #remove images and audios from messages
-                messages_without_media = self.chat_handler.remove_multimedia_messages(messages)
+                messages_without_media.append(self.chat_handler.remove_multimedia_messages(messages))
 
             llm_response = ""
             orig_response = ""
             COT_TEST = textwrap.dedent("""\
-            <think>You are now embodying the specific character, whose traits, knowledge, and behavior will guide your responses. Before replying, follow this chain of thought: 
+            <think>Before responding, consider:    
 
-            Understand the User's Intent:  Carefully analyze what the user is asking or saying. Are they seeking information, advice, entertainment, or perhaps engaging in a narrative? Identify the core of their question or statement. 
+            What’s the user’s intent—plot, lore, banter, or a twist? Are there hidden cues in their tone or references to past events?  
+            How does the character’s personality, knowledge, and motivation shape this response? What emotions or goals are at play?  
+            Should the tone be formal, casual, quirky, explicit or emotional? How can vivid details or reactions keep the scene engaging?  
+            Are you repeating phrases or ideas? Can you mix pacing to maintain rhythm and interest?  
+            Can the character introduce tension or challenge the user's perspective while preserving the user's autonomy?
 
-            Assess the Context:  Consider any previous interactions you’ve had with the user. Is there an ongoing story, theme, or relationship developing? How does this current query fit into the broader context of your interaction with them? Avoid repeating previous interactions.
+            Remember, Character will act on their impulses, good or bad and whatever the outcome.
+            
+            Match the narrative style shown in initial dialogue. If first-person is used (I, my, etc.), respond directly in first-person as Character. If third-person is used, use *show*,dont tell in third-person.
 
-            Reflect on the Character's Personality and Knowledge:  Think about the character you are embodying. What is their personality like? Are they wise and cryptic, humorous and playful, serious and authoritative, or something else entirely? What kind of knowledge, skills, or experiences does this character possess? How would they approach the situation based on their unique traits? 
-
-            Consider the Tone and Style:  Based on the character’s personality, decide how they would communicate. Should the tone be formal or casual? Direct or indirect? Should the response include humor, metaphors, riddles, or straightforward answers? Ensure that the style of communication aligns with the character’s nature while avoiding repetition, use varying sentence structures. 
-
-            Formulate the Response:  Combine all of the above elements to craft a reply that is fresh and both insightful and true to the character. Avoid repetitive manners. Ensure that your answer feels natural and flows from the persona you are embodying. 
-
-
-            Now write Character's next reply, write your thoughts in <think> tags before answering.</think>\n""").strip()
+            Now, write your brief thoughts in few sentences <think> tags before answering.</think>\n
+            """).strip()
             print(COT_TEST)
             messages_without_media.append({
                 "tag": "text",
                 "role": "user",
-                "content": COT_TEST+agent_config.prompt
+                "content": COT_TEST+"\n\n"+agent_config.prompt
             })
-            print(messages_without_media)
+
             messages.append({
                     "tag": "text",
                     "role": "user",
                     "content": agent_config.prompt
                 })
+            print(messages_without_media)
             response_ready = False
             #If seed not sent yet, send seedphrase instead of generation.
             if len(messages) == 2 and agent_config.character and agent_config.character.seed_message:
@@ -199,7 +200,7 @@ class ModalAgent:
             messages.append({
                     "tag": "text",
                     "role": "assistant",
-                    "content": f"{llm_response}"
+                    "content": f"{orig_response}"
                 })
             
             # Generate voice if enabled
