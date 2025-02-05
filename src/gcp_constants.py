@@ -1,6 +1,6 @@
 import modal
 gcp_hmac_secret = modal.Secret.from_name(
-"gcp-secret",
+"gcp-secret-prod",
 required_keys=["GOOGLE_ACCESS_KEY_ID", "GOOGLE_ACCESS_KEY_SECRET"]
 )
 GCP_PUBLIC_IMAGE_BUCKET = 'truluv-public'
