@@ -45,8 +45,6 @@ class ChatHandler:
         messages.extend(
             [msg for msg in history if msg.get('role') != 'system'])
 
-        # Add the user's prompt
-        #messages.append({"tag": "text", "role": "user", "content": COT_TEST+prompt})
         # Filter messages to fit context window
         max_context_size = agent_config.llm_config.context_size
 

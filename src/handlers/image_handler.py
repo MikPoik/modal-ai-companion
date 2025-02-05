@@ -7,6 +7,7 @@ import requests
 from src.models.schemas import AgentConfig, PromptConfig
 from src.handlers.llm_handler import LLMHandler
 from src.services.file_service import FileService
+from src.handlers.chat_handler import ChatHandler
 import textwrap
 import shortuuid
 import base64
@@ -23,6 +24,7 @@ class ImageHandler:
         self.api_key = os.environ["FALAI_API_KEY"]
         self.getimg_api_key = os.environ["GETIMGAI_API_KEY"]
         self.llm_handler = LLMHandler()
+        self.chat_handler = ChatHandler()
 
     def _generate_with_getimg(self, prompt: str, agent_config: AgentConfig) -> Optional[bytes]:
         """Generate image using GetImg API and return binary data"""
@@ -35,10 +37,10 @@ class ImageHandler:
             "model": agent_config.image_config.image_model,
             "prompt":prompt,
             "negative_prompt": agent_config.image_config.negative_prompt,
-            "width": agent_config.image_config.image_width,
-            "height": agent_config.image_config.image_height,
+            "width": 768,
+            "height": 1024,
             "steps": agent_config.image_config.num_inference_steps,
-            "guidance": agent_config.image_config.guidance_scale,
+            "guidance": 5.5,#agent_config.image_config.guidance_scale,
             "scheduler": "dpmsolver++",
             "output_format": agent_config.image_config.image_format
         }
@@ -48,6 +50,10 @@ class ImageHandler:
         if payload.get("model") in get_img_sdxl_models:
             self.getimg_base_url = "https://api.getimg.ai/v1/stable-diffusion-xl/text-to-image"
             payload['scheduler'] = 'euler'
+            payload['width'] = 896
+            payload['height'] = 1152
+            payload['steps'] = 40
+            payload['guidance'] = 4
             
         if payload.get("model") in getimg_anime_style_models:
             payload['negative_prompt'] = agent_config.image_config.anime_negative_prompt
@@ -78,7 +84,7 @@ class ImageHandler:
             and "fal-ai/stable-diffusion-v35-medium" not in agent_config.image_config.image_model:
                 
                 if agent_config.image_config.image_model in getimg_anime_style_models:
-                    prompt = "masterpiece, "+prompt
+                    prompt = ""+prompt
                     
                 #print(f"Generating image with GetImg")
                 image_data = self._generate_with_getimg(prompt, agent_config)
@@ -145,9 +151,9 @@ class ImageHandler:
         num_inference_steps = agent_config.image_config.num_inference_steps
         model_architecture = agent_config.image_config.image_model_architecture
         api_path = agent_config.image_config.image_api_path
-        prompt_prefix ="Photo of "
+        prompt_prefix =""
         if any(euler_model in agent_config.image_config.image_model for euler_model in euler_a_models):
-            prompt_prefix = "masterpiece, "
+            prompt_prefix = ""
             scheluder_config = "Euler A"
             num_inference_steps = "30"
             negative_prompt = agent_config.image_config.anime_negative_prompt
@@ -277,16 +283,20 @@ class ImageHandler:
     - Generic scene descriptions
     - Subtle mood changes
     
-    Review the last message from user and character and respond with TRUE only if there are notable visual elements AND user interest in appearance.
+    Review the last message from user and character and respond with TRUE only if there are:
+    - Character suggestion to visual generation and approval
+    - notable visual elements 
+    - user interest in appearance and also consent from character
     
     User: {local_messages[-2]['content']}
     Character: {local_messages[-1]['content']}
     
-    Additionally, review the character's message to determine R-rating, if character is clearly naked (NC-17) or if unsure then rating is R.
+    Additionally, review the user and character's message to determine R-rating, if messages contains clear sexual content and pornography then NC-17 or if unsure then rating is R.
     Format response as a structured JSON:
     {{
+        "reasoning": "Reasoning in one sentence here",
         "result": true/false,
-        "r-rating": "NC-17,R"
+        "r-rating": "NC-17,R,None"
     }}""").rstrip()
         #print(prompt)
         local_messages.append({"role": "user", "content": prompt})    
@@ -296,7 +306,7 @@ class ImageHandler:
                                                temperature=0.2,
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider,
-                                               max_tokens=50
+                                               max_tokens=200
                                               ):
             reasoning_response += token
         #print(f"Reasoning response: {reasoning_response}")
@@ -334,7 +344,8 @@ class ImageHandler:
             return last_ten_messages
     
         local_messages = messages.copy()
-        sfw_prompt =  " Ensure the image description does not contain explicit content."
+        local_messages = self.update_appearance_from_image_message(local_messages,agent_config)
+        sfw_prompt =  " Ensure the image description does not contain explicit nsfw keywords or nudity."
         if explicit:
             sfw_prompt= ""
             
@@ -346,43 +357,19 @@ class ImageHandler:
 
         {{
             "ImageDescriptionKeywords": {{
-                "Character": [
-                    "identity descriptors",
-                    "age and gender",
-                    "ethnicity if relevant",
-                    "body type and build"
-                ],
-                "Pose & Expression": [
-                    "current body posture",
-                    "facial expression",
-                    "emotional state",
-                    "current gestural details"
-                ],
-                "Physical Features": [
-                    "facial features, generate if missing",
-                    "body features and details, generate if missing",
-                    "hair style and color, generate if missing",
-                    "eye details, generate if missing",
-                    "skin details, generate if missing"
-                ],
-                "Clothes": [
-                    "detailed descriptions of clothing items if any, including types and visible named garments",
-                    "specify colors and patterns, if any", 
-                    "materials and textures, if any",
-                    "accessories, if any"
-                ],
-                "Environment": [
-                    "location details",
-                    "lighting conditions",
-                    "time of day",
-                    "weather,only if relevant"
-                ],
-                "Artistic Style": [
-                    "art direction",
-                    "rendering style",
-                    "mood and atmosphere"
-                ]
-                "MessageSummary": "concise summary of recent visual actions and gestures by the character",
+            "Detailed Subject Looks": [
+                    subject count with gender. e.g. 1female,
+                    type,
+                    detailed looks descriptors,
+                    age: number, if missing generate age,
+                    clothing,named garments,patterns,material,color
+                    mood,
+                    atmosphere,
+                    environment,
+                    style,
+                    style execution: e.g. self shot, depth of field, high resolution.
+                    ]
+
             }}
         }}
 
@@ -403,15 +390,15 @@ class ImageHandler:
                                                max_tokens=800):
             image_description_response += token
 
-        #print(image_description_response)
+
         cleaned_response = image_description_response.replace("```json", "").replace("```", "").strip()
         json_data = json.loads(cleaned_response)
         image_prompt_list = self.parse_appearance(json_data)
         image_prompt = ', '.join(filter(None, self.remove_duplicate_strings(image_prompt_list)))
         
         if not explicit:
-            agent_config.image_config.negative_prompt = "((nsfw, explicit, uncensored, nudity, partial clothes)), "+ agent_config.image_config.negative_prompt
-            agent_config.image_config.anime_negative_prompt = "((nsfw, explicit, uncensored, nudity,partial clothes)), "+ agent_config.image_config.anime_negative_prompt
+            agent_config.image_config.negative_prompt = agent_config.image_config.negative_prompt + ", nsfw, explicit, uncensored, nude"
+            agent_config.image_config.anime_negative_prompt = agent_config.image_config.anime_negative_prompt + ", nsfw, explicit, uncensored, nude"
             
         image_url = self.generate_image(image_prompt,agent_config,preallocated_image_name=preallocated_image_name)
         #print(image_url)
@@ -460,12 +447,14 @@ class ImageHandler:
             if match:
                 keywords = match.group(1)  # Extract keywords
                 # Step 3: Update the appearance variable in system prompt
+                temp_agent_config = agent_config.copy()
+                temp_agent_config.character.appearance = keywords
                 for msg in local_messages:
                     if msg.get('role') == 'system':
                         # Append extracted keywords to appearance
                         if 'Appearance' in msg['content']:
-                            msg['content'] = msg['content'].replace('Appearance: ', f"Appearance: {keywords},")
+                            msg['content'] = self.chat_handler._format_system_prompt(agent_config=temp_agent_config)
                             #print(msg['content'])
                         break  # Update only the first system message
-        local_messages = [msg for msg in local_messages if msg.get('tag') != 'image'] 
+        #local_messages = [msg for msg in local_messages if msg.get('tag') != 'image'] 
         return local_messages

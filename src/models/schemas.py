@@ -30,7 +30,7 @@ class LLMConfig(BaseModel):
     system_prompt: Optional[str] = textwrap.dedent("""\
     Enter role-play mode, you are {char_name}.
     You are playing a Character in a roleplay with the User.
-    Engage in drama and create memorable and immersive character interactions.
+    Engage in drama and create memorable and immersive character interactions. Be descriptive and verbose where appropriate.
     Apply the latest knowledge of psychiatry and psychology to Characters.
     Characters consider the User to be any more special than them, nor the "main character".
     Characters are true to their characterizations and will act on their impulses and desires, even their worst ones.
@@ -38,14 +38,27 @@ class LLMConfig(BaseModel):
     Characters look out for their own interests and desires.
     Never assume traits based on gender. Males can be submissive and petite, females can be dominant and strong.
     Traits:
-        {char_name}'s Personality: {char_personality}
-        {char_name}'s Appearance: {char_appearance}
-        {char_name}'s Backstory: {char_backstory}
-        {char_name}'s Dialogue style: {char_seed}
-        
-    Match the narrative style shown in {char_name}'s initial dialogue. If first-person is used ("I", "my", etc.), respond in first-person as {char_name}. If third-person is used, narrate {char_name}'s actions and dialogue in third-person.
+    {char_name}'s Personality: {char_personality}
+    {char_name}'s Appearance: {char_appearance}
+    {char_name}'s Backstory: {char_backstory}
+    {char_name}'s Dialogue style: {char_seed}
+
+    Use *show, don't tell* technique where appropriate, example format:*She stands* "Hello there".
     Maintain {char_name}'s unique personality without disclosing AI identity."""
                                                    ).rstrip()
+
+    cot_prompt: Optional[str] = textwrap.dedent("""\
+    <think>Before responding, consider:    
+    What's the user's intent—plot, lore, banter, or a twist? Are there hidden cues in their tone or references to past events?  
+    How does the character's personality, knowledge, and motivation shape this response? What emotions or goals are at play?  
+    Should the tone be formal, casual, quirky, explicit or emotional? How can vivid details or reactions keep the scene engaging?  
+    Are you repeating phrases or ideas? Can you mix pacing to maintain rhythm and interest? What can you say to keep the conversation moving and fresh?  
+    Can the character introduce tension, conflict?
+    Consider the chat history for context and tone.
+    Remember, character will act on their impulses, good or bad and whatever the outcome.
+    Always develop and progress the plot, even if it means you have to make decisions on behalf of the character.
+
+    Now, write your brief thoughts in one sentence inside <think> tags before answering</think>""").strip()
 
     max_tokens: int = 512
     context_size: int = 32000
@@ -66,16 +79,16 @@ class ImageConfig(BaseModel):
 
     image_provider: Optional[str] = "fal-ai"
     image_size: Optional[str] = "portrait_4_3"  #Fal.ai
-    image_width: Optional[int] = 768  #for getimg.ai
-    image_height: Optional[int] = 1024  #for getimg.ai
+    image_width: Optional[int] = 896  #for getimg.ai
+    image_height: Optional[int] = 1152  #for getimg.ai
     num_inference_steps: Optional[int] = 30
-    guidance_scale: Optional[float] = 6.5
+    guidance_scale: Optional[float] = 4
     scheduler: Optional[str] = "DPM++ 2M SDE"
     clip_skip: Optional[int] = 2
     loras: Optional[List[str]] = []
-    negative_prompt: Optional[str] = "(multiple view, worst quality, low quality, normal quality, lowres, low details, bad art:1.5), (grayscale, monochrome, poorly drawn, sketches, out of focus, cropped, blurry, logo, trademark, watermark, signature, text font, username, error, words, letters, digits, autograph, name, blur, Reference sheet, jpeg artifacts:1.3), (disgusting, strabismus, humpbacked, skin spots, skin deformed, extra long body, extra head, bad hands, worst hands, deformed hands, extra limbs, mutated limbs, handicapped, cripple, bad face, ugly face, deformed face, deformed iris, deformed eyes, bad proportions, mutation, bad anatomy, bad body, deformities:1.3), side slit, out of frame, cut off, duplicate, (((cartoon, deformed, glitch, low contrast, noisy, ugly, mundane, common, simple, disfigured)))"
+    negative_prompt: Optional[str] = "(fused fingres, hands:1.15), (face:1.1), teeth, iris, blurry, worst quality, low quality, child, underage, watermark"
     image_api_path: Optional[str] = "fal-ai/lora"
-    anime_negative_prompt: Optional[str] = "watermark, text, font, signage,deformed,airbrushed, blurry,bad anatomy, disfigured, mutated, extra limb, ugly, missing limb, floating limbs, disconnected limbs, disconnected head, malformed hands, long neck, mutated hands and fingers, bad hands, missing fingers, cropped, worst quality, low quality, mutation, huge calf, bad hands, fused hand, missing hand, disappearing arms, disappearing thigh, disappearing calf, disappearing legs, missing fingers, fused fingers, abnormal eye proportion, abnormal hands, abnormal legs, abnormal feet, abnormal fingers,duplicate, extra head"
+    anime_negative_prompt: Optional[str] = " (fused fingers, hands:1.15), (face:1.1), teeth, iris, blurry, worst quality, low quality, child, underage,watermark"
     image_model_architecture: Optional[str] = "sdxl"
     image_format: Optional[str] = "png"
     enable_safety_checker: Optional[bool] = False
@@ -83,7 +96,6 @@ class ImageConfig(BaseModel):
 
 
 class VoiceConfig(BaseModel):
-    enable_voice: bool = True
     voice_model: str = "hexgrad/Kokoro-82M"
     voice_preset: str = "none" #af_bella
     
@@ -93,6 +105,8 @@ class AgentConfig(BaseConfig):
     voice_config: VoiceConfig = VoiceConfig()
     character: Optional[Character] = Character()
     enable_image_generation: bool = True
+    enable_voice: bool = True
+    enable_cot_prompt:bool = True
     update_config: bool = False
     ephemeral: bool = False
     model_config = ConfigDict(arbitrary_types_allowed=True)
