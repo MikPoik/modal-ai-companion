@@ -157,22 +157,12 @@ class ModalAgent:
             parsed_response = ""
 
             user_prompt = agent_config.prompt
-            temp_cot =  textwrap.dedent("""\
-            <think>Before responding, consider:    
-            What's the user's intent—plot, lore, banter, or a twist? Are there hidden cues in their tone or references to past events?  
-            How does the character's personality, knowledge, and motivation shape this response? What emotions or goals are at play?  
-            Should the tone be formal, casual, quirky, explicit or emotional? How can vivid details or reactions keep the scene engaging?  
-            Are you repeating phrases or ideas? Can you mix pacing to maintain rhythm and interest? What can you say to keep the conversation moving and fresh?  
-            Can the character introduce tension, conflict?
-            Consider the chat history for context and tone.
-            Remember, character will act on their impulses, good or bad and whatever the outcome.
-            Always develop and progress the plot, even if it means you have to make decisions on behalf of the character.
-            
-            Now, write your brief thoughts in one sentence inside <think> tags before answering</think>""").strip()
-            if agent_config.enable_cot_prompt:
-                if len(messages_to_history) > 2 and agent_config.character:
-                    user_prompt = f"{temp_cot }\n\n{user_prompt}"
 
+            
+            if agent_config.enable_cot_prompt and "Gryphe/MythoMax-L2-13b" not in agent_config.llm_config.model:
+                if len(messages_to_history) > 2 and agent_config.character:
+                    user_prompt = f"{agent_config.llm_config.cot_prompt.format(user_prompt=user_prompt)}"
+            
             messages_to_send.append({
                 "tag": "text",
                 "role": "user",
@@ -182,10 +172,9 @@ class ModalAgent:
             messages_to_history.append({
                 "tag": "text",
                 "role": "user",
-                "content": agent_config.prompt #raw prompt
+                "content": agent_config.prompt  #raw prompt
             })
 
-            #print(messages_to_send)
             #If seed not sent yet, send seedphrase instead of generation.
             if len(
                     messages_to_history
@@ -200,20 +189,23 @@ class ModalAgent:
                                                        agent_config,
                                                        frequency_penalty=0.01,
                                                        presence_penalty=0.01):
-
-                    
-                    if agent_config.enable_cot_prompt:
+                    if agent_config.enable_cot_prompt and "Gryphe/MythoMax-L2-13b" not in agent_config.llm_config.model:
                         llm_response += token
                         if response_ready:
                             parsed_response += token
                             yield token
                         if "</think>" in llm_response:
                             response_ready = True
+                        elif len(llm_response) == 7:
+                            if not llm_response.startswith("<think>"):
+                                response_ready = True
                     else:
                         llm_response += token
                         parsed_response += token
                         yield token
 
+                if agent_config.enable_cot_prompt and not parsed_response:
+                    parsed_response = llm_response
 
             messages_to_history.append({
                 "tag": "text",
@@ -247,8 +239,9 @@ class ModalAgent:
                     yield f"![image]({public_url})"
 
                     image_url = self.image_handler.request_image_generation(
-                        self.chat_handler.keep_last_image_message(self.chat_handler.remove_audio_messages(
-                            messages_to_history)), agent_config,
+                        self.chat_handler.keep_last_image_message(
+                            self.chat_handler.remove_audio_messages(
+                                messages_to_history)), agent_config,
                         preallocated_image_name, explicit)
 
                     if image_url:

@@ -48,21 +48,22 @@ class LLMConfig(BaseModel):
                                                    ).rstrip()
 
     cot_prompt: Optional[str] = textwrap.dedent("""\
+    {user_prompt}
     <think>Before responding, consider:    
     What's the user's intent—plot, lore, banter, or a twist? Are there hidden cues in their tone or references to past events?  
     How does the character's personality, knowledge, and motivation shape this response? What emotions or goals are at play?  
-    Should the tone be formal, casual, quirky, explicit or emotional? How can vivid details or reactions keep the scene engaging?  
-    Are you repeating phrases or ideas? Can you mix pacing to maintain rhythm and interest? What can you say to keep the conversation moving and fresh?  
+    Should the tone be formal, casual, quirky, explicit, emotional or something else? How can vivid details or reactions keep the scene engaging?  
+    Are there repeating phrases or ideas? Is it possible to mix pacing to maintain rhythm and interest? What can be said to keep the conversation moving and fresh?  
     Can the character introduce tension, conflict?
     Consider the chat history for context and tone.
     Remember, character will act on their impulses, good or bad and whatever the outcome.
-    Always develop and progress the plot, even if it means you have to make decisions on behalf of the character.
+    Always develop and progress the plot, even if it means making decisions on behalf of the character.
 
-    Now, write your brief thoughts in one sentence inside <think> tags before answering</think>""").strip()
+    Now, write brief thoughts in few sentences inside <think> tags before answering after tags</think>""").strip()
 
     max_tokens: int = 512
     context_size: int = 32000
-    model: Optional[str] = "Sao10K/L3.1-70B-Euryale-v2.2"
+    model: Optional[str] = "Gryphe/MythoMax-L2-13b"
     reasoning_model: Optional[str] = "mistralai/Mixtral-8x22B-Instruct-v0.1"
     reasoning_provider: Optional[str] = "togetherai"
     provider: Optional[str] = "deepinfra"
@@ -86,9 +87,9 @@ class ImageConfig(BaseModel):
     scheduler: Optional[str] = "DPM++ 2M SDE"
     clip_skip: Optional[int] = 2
     loras: Optional[List[str]] = []
-    negative_prompt: Optional[str] = "(fused fingres, hands:1.15), (face:1.1), teeth, iris, blurry, worst quality, low quality, child, underage, watermark"
+    negative_prompt: Optional[str] = "(hands:1.15), fused fingers, (face:1.1), [teeth], [iris], blurry, worst quality, low quality, child, underage, watermark, [cropped], [missing limbs]"
     image_api_path: Optional[str] = "fal-ai/lora"
-    anime_negative_prompt: Optional[str] = " (fused fingers, hands:1.15), (face:1.1), teeth, iris, blurry, worst quality, low quality, child, underage,watermark"
+    anime_negative_prompt: Optional[str] = "(hands:1.15), fused fingers, (face:1.1), [teeth], [iris], blurry, worst quality, low quality, child, underage,watermark, [cropped],[missing limbs]"
     image_model_architecture: Optional[str] = "sdxl"
     image_format: Optional[str] = "png"
     enable_safety_checker: Optional[bool] = False

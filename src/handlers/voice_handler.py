@@ -20,6 +20,10 @@ class VoiceHandler:
         # Remove all *action* text between asterisks
         import re
         clean_text = re.sub(r"\*([^*]+)\*", "", text)
+        #remove text between <think> tags
+        clean_text = re.sub(r"<think>(.*?)</think>", "", clean_text)
+        if "</think>" in clean_text:
+            clean_text = clean_text.split("</think>")[1]
         clean_text = clean_text.strip()
 
         #check if the text is empty and restore original text

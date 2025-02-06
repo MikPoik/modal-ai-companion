@@ -40,7 +40,7 @@ class ImageHandler:
             "width": 768,
             "height": 1024,
             "steps": agent_config.image_config.num_inference_steps,
-            "guidance": 5.5,#agent_config.image_config.guidance_scale,
+            "guidance": 4,#agent_config.image_config.guidance_scale,
             "scheduler": "dpmsolver++",
             "output_format": agent_config.image_config.image_format
         }
@@ -284,8 +284,7 @@ class ImageHandler:
     - Subtle mood changes
     
     Review the last message from user and character and respond with TRUE only if there are:
-    - Character suggestion to visual generation and approval
-    - notable visual elements 
+    - Character suggestion to visual generation and notable visual elements
     - user interest in appearance and also consent from character
     
     User: {local_messages[-2]['content']}
@@ -358,8 +357,7 @@ class ImageHandler:
         {{
             "ImageDescriptionKeywords": {{
             "Detailed Subject Looks": [
-                    subject count with gender. e.g. 1female,
-                    type,
+                    subject description with count and gender. e.g. 1female neko
                     detailed looks descriptors,
                     age: number, if missing generate age,
                     clothing,named garments,patterns,material,color
@@ -397,8 +395,8 @@ class ImageHandler:
         image_prompt = ', '.join(filter(None, self.remove_duplicate_strings(image_prompt_list)))
         
         if not explicit:
-            agent_config.image_config.negative_prompt = agent_config.image_config.negative_prompt + ", nsfw, explicit, uncensored, nude"
-            agent_config.image_config.anime_negative_prompt = agent_config.image_config.anime_negative_prompt + ", nsfw, explicit, uncensored, nude"
+            agent_config.image_config.negative_prompt = agent_config.image_config.negative_prompt + ", nsfw, explicit, uncensored, (nude:1.5)"
+            agent_config.image_config.anime_negative_prompt = agent_config.image_config.anime_negative_prompt + ", nsfw, explicit, uncensored, (nude:1.5)"
             
         image_url = self.generate_image(image_prompt,agent_config,preallocated_image_name=preallocated_image_name)
         #print(image_url)
