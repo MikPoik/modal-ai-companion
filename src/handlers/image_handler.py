@@ -15,12 +15,27 @@ import re
 
 euler_a_models = [ "156375","286821","303526","378499","293564","384264" ]
 getimg_anime_style_models = ["reproduction-v3-31","real-cartoon-xl-v6","sdvn7-niji-style-xl-v1","counterfeit-xl-v2-5","animagine-xl-v-3-1"]
+getimg_flux_schnell_models = ["flux-schnell"]
+flux_lora_models = ["https://civitai.com/api/download/models/746602?type=Model&format=SafeTensor",
+                    "https://civitai.com/api/download/models/753053?type=Model&format=SafeTensor",
+                    "https://civitai.com/api/download/models/904370?type=Model&format=SafeTensor", #Photorealistic Lora 704013
+                    "https://civitai.com/api/download/models/723657?type=Model&format=SafeTensor",
+                    "https://civitai.com/api/download/models/1061126?type=Model&format=SafeTensor", #Flux hentai 947545/
+                    "https://civitai.com/api/download/models/733658?type=Model&format=SafeTensor", #Flux Nsfw model 655753                    
+                    "https://civitai.com/api/download/models/729537?type=Model&format=SafeTensor", #Flux anime lora 104807
+                    "https://civitai.com/api/download/models/1272367?type=Model&format=SafeTensor", #Realistic Anime 1131779
+                    "https://civitai.com/api/download/models/1308497?type=Model&format=SafeTensor", #Anime Enchancer 348852
+                    "https://civitai.com/api/download/models/728041?type=Model&format=SafeTensor", #Midjorney 650743
+                    "https://civitai.com/api/download/models/756735?type=Model&format=SafeTensor" #Hentai 676019
+
+                   ]
 
 class ImageHandler:
     def __init__(self):
         self.file_service = FileService('/cloud-images')
         self.base_url = "https://queue.fal.run"
         self.getimg_base_url = "https://api.getimg.ai/v1/stable-diffusion/text-to-image"
+        self.getimg_flux_schnell_base_url ="https://api.getimg.ai/v1/flux-schnell/text-to-image"
         self.api_key = os.environ["FALAI_API_KEY"]
         self.getimg_api_key = os.environ["GETIMGAI_API_KEY"]
         self.llm_handler = LLMHandler()
@@ -32,7 +47,6 @@ class ImageHandler:
             "Authorization": f"Bearer {self.getimg_api_key}",
             "Content-Type": "application/json"
         }
-
         payload = {
             "model": agent_config.image_config.image_model,
             "prompt":prompt,
@@ -40,7 +54,7 @@ class ImageHandler:
             "width": 768,
             "height": 1024,
             "steps": agent_config.image_config.num_inference_steps,
-            "guidance": 4,#agent_config.image_config.guidance_scale,
+            "guidance": agent_config.image_config.guidance_scale,
             "scheduler": "dpmsolver++",
             "output_format": agent_config.image_config.image_format
         }
@@ -53,12 +67,21 @@ class ImageHandler:
             payload['width'] = 896
             payload['height'] = 1152
             payload['steps'] = 40
-            payload['guidance'] = 4
             
         if payload.get("model") in getimg_anime_style_models:
             payload['negative_prompt'] = agent_config.image_config.anime_negative_prompt
+
+        if payload.get("model") in getimg_flux_schnell_models:
+            self.getimg_base_url = "https://api.getimg.ai/v1/flux-schnell/text-to-image"
+            payload.pop( "guidance", None)
+            payload.pop( "scheduler", None)
+            payload.pop("model",None)
+            payload.pop("negative_prompt",None)
+            payload['width'] = 896
+            payload['height'] = 1152
+            payload['steps'] = 4
             
-        #print(f"Generating image with GetImg API: {payload}")
+        print(f"Generating image with GetImg API: {payload}")
         try:
             response = requests.post(self.getimg_base_url, headers=headers, json=payload)
             response.raise_for_status()
@@ -183,14 +206,25 @@ class ImageHandler:
         }
         
         formatted_job_details = json.dumps(job_details, indent=4)
-        #print(f"Submitting job with details: {formatted_job_details}")
+
         # Add optional loras if configured
         if agent_config.image_config.loras:
             job_details["loras"] = agent_config.image_config.loras
 
         if agent_config.image_config.image_model == "fal-ai/stable-diffusion-v35-medium":
             agent_config.image_config.image_api_path = "/fal-ai/stable-diffusion-v35-medium"
-            
+
+        #Flux lora
+        if agent_config.image_config.image_model in flux_lora_models:
+            agent_config.image_config.image_api_path = "fal-ai/flux-lora"
+            job_details["guidance_scale"] = 2.5
+            job_details["steps"] = 20
+            job_details["loras"] = [
+                {
+                    "path": agent_config.image_config.image_model,
+                    "scale": 0.9
+                }]
+        print(f"Submitting Fal.ai job with details: {formatted_job_details}")
         if len(prompt) > 10:
             try:
                 response = requests.post(
@@ -352,20 +386,20 @@ class ImageHandler:
         <Instruction>
         Analyze the current scene and character appearance to generate a updated detailed visual description optimized for image generation, making sure description is up to date to the latest message.
 
-        Format your response as a structured JSON with the following categories:
+        Format your response as a structured JSON with the following string array literals:
 
         {{
             "ImageDescriptionKeywords": {{
             "Detailed Subject Looks": [
-                    subject description with count and gender. e.g. 1female neko
-                    detailed looks descriptors,
-                    age: number, if missing generate age,
-                    clothing,named garments,patterns,material,color
-                    mood,
-                    atmosphere,
-                    environment,
-                    style,
-                    style execution: e.g. self shot, depth of field, high resolution.
+                    "subject description with count and gender. e.g. 1female neko",
+                    "detailed looks descriptors",
+                    "age as number, if missing generate age",
+                    "clothing,named garments,patterns,material,color",
+                    "mood",
+                    "atmosphere",
+                    "environment",
+                    "style (e.g. photographic, realistic, if anime character then anime,absurdes)",
+                    "style execution (e.g. self shot, depth of field, high resolution,highly detailed)"
                     ]
 
             }}
@@ -388,15 +422,15 @@ class ImageHandler:
                                                max_tokens=800):
             image_description_response += token
 
-
+        #print(f"Image description response: {image_description_response}")
         cleaned_response = image_description_response.replace("```json", "").replace("```", "").strip()
         json_data = json.loads(cleaned_response)
         image_prompt_list = self.parse_appearance(json_data)
         image_prompt = ', '.join(filter(None, self.remove_duplicate_strings(image_prompt_list)))
         
-        if not explicit:
-            agent_config.image_config.negative_prompt = agent_config.image_config.negative_prompt + ", nsfw, explicit, uncensored, (nude:1.5)"
-            agent_config.image_config.anime_negative_prompt = agent_config.image_config.anime_negative_prompt + ", nsfw, explicit, uncensored, (nude:1.5)"
+        #if not explicit:
+        #    agent_config.image_config.negative_prompt = agent_config.image_config.negative_prompt + ", nsfw, explicit, uncensored, (nude:1.5)"
+        #    agent_config.image_config.anime_negative_prompt = agent_config.image_config.anime_negative_prompt + ", nsfw, explicit, uncensored, (nude:1.5)"
             
         image_url = self.generate_image(image_prompt,agent_config,preallocated_image_name=preallocated_image_name)
         #print(image_url)

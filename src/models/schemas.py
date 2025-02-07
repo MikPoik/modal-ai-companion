@@ -76,20 +76,20 @@ class LLMConfig(BaseModel):
 
 
 class ImageConfig(BaseModel):
-    image_model: Optional[str] = "juggernaut-xl-v10"
+    image_model: Optional[str] = "absolute-reality-v1-8-1"
 
     image_provider: Optional[str] = "fal-ai"
     image_size: Optional[str] = "portrait_4_3"  #Fal.ai
-    image_width: Optional[int] = 896  #for getimg.ai
-    image_height: Optional[int] = 1152  #for getimg.ai
+    image_width: Optional[int] = 896 
+    image_height: Optional[int] = 1152
     num_inference_steps: Optional[int] = 30
     guidance_scale: Optional[float] = 4
     scheduler: Optional[str] = "DPM++ 2M SDE"
     clip_skip: Optional[int] = 2
     loras: Optional[List[str]] = []
-    negative_prompt: Optional[str] = "(hands:1.15), fused fingers, (face:1.1), [teeth], [iris], blurry, worst quality, low quality, child, underage, watermark, [cropped], [missing limbs]"
+    negative_prompt: Optional[str] = "bad composition, (hands:1.15), fused fingers, (face:1.1), [teeth], [iris], blurry, worst quality, low quality, child, underage, watermark, [missing limbs]"
     image_api_path: Optional[str] = "fal-ai/lora"
-    anime_negative_prompt: Optional[str] = "(hands:1.15), fused fingers, (face:1.1), [teeth], [iris], blurry, worst quality, low quality, child, underage,watermark, [cropped],[missing limbs]"
+    anime_negative_prompt: Optional[str] = "bad composition, (hands:1.15), fused fingers, (face:1.1), [teeth], [iris], blurry, worst quality, low quality, child, underage, watermark, [missing limbs]"
     image_model_architecture: Optional[str] = "sdxl"
     image_format: Optional[str] = "png"
     enable_safety_checker: Optional[bool] = False
