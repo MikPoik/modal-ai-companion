@@ -51,13 +51,14 @@ class LLMConfig(BaseModel):
     {user_prompt}
     <think>Before responding, consider:    
     What's the user's intent—plot, lore, banter, or a twist? Are there hidden cues in their tone or references to past events?  
-    How does the character's personality, knowledge, and motivation shape this response? What emotions or goals are at play?  
+    How does the character's personality, manners, accent, knowledge, and motivation shape this response? What emotions or goals are at play?  
     Should the tone be formal, casual, quirky, explicit, emotional or something else? How can vivid details or reactions keep the scene engaging?  
     Are there repeating phrases or ideas? Is it possible to mix pacing to maintain rhythm and interest? What can be said to keep the conversation moving and fresh?  
     Can the character introduce tension, conflict?
     Consider the chat history for context and tone.
     Remember, character will act on their impulses, good or bad and whatever the outcome.
     Always develop and progress the plot, even if it means making decisions on behalf of the character.
+    Use *show, don't tell* technique where appropriate, example:*She stands* "Hello there".
 
     Now, write brief thoughts in few sentences inside <think> tags before answering after tags</think>""").strip()
 
@@ -76,7 +77,7 @@ class LLMConfig(BaseModel):
 
 
 class ImageConfig(BaseModel):
-    image_model: Optional[str] = "absolute-reality-v1-8-1"
+    image_model: Optional[str] = "https://civitai.com/api/download/models/753053?type=Model&format=SafeTensor"
 
     image_provider: Optional[str] = "fal-ai"
     image_size: Optional[str] = "portrait_4_3"  #Fal.ai

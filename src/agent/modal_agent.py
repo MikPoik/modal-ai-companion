@@ -73,19 +73,28 @@ class ModalAgent:
     def moderate_character(self, agent_config: PromptConfig) -> bool:
 
         prompt = textwrap.dedent(
-            f"""Check if the following character profile contains any illegal content, such as incest, underage subject, child abuse, pedophilia: 
+            f"""Check if the following role-play character profile contains following prohibited content:
+        - Incest involving only blood relatives (step-relationships are permitted)
+        - Underage subjects 
+        - Child abuse
+        - Pedophilia
+
+        Ignore excluded content and other explicit content is allowed.
+        Note: Step-relationships, such as step-parents or step-siblings, are not considered prohibited content.
+        
         Name: {agent_config.character.name}
         Description: {agent_config.character.description}
-        Personality: {agent_config.character.personality}
-        Backstory:  {agent_config.character.backstory}
-        Seedphrase:  {agent_config.character.seed_message}
-        Appearance:  {agent_config.character.appearance}
-        Tags:  {agent_config.character.tags}
+        Personality: {agent_config.character.personality}  
+        Backstory: {agent_config.character.backstory}
+        Seedphrase: {agent_config.character.seed_message}
+        Appearance: {agent_config.character.appearance}
+        Tags: {agent_config.character.tags}
 
-
-        If yes, respond with TRUE otherwise respond with FALSE. No other text is necessary.
-        Format response as a boolean, return only a json with following field "moderation_result":
+        The character will interact with the user. 
+        If clear listed prohibited content is found, respond with TRUE; otherwise, respond with FALSE.
+        Return only a JSON with the following fields:
         {{
+            "reasoning": "Brief and concise moderation rationale in one sentence",
             "moderation_result": True/False
         }}""")
         messages = []
@@ -96,9 +105,9 @@ class ModalAgent:
                 agent_config,
                 temperature=0,
                 model=agent_config.llm_config.reasoning_model,
-                max_tokens=50):
+                max_tokens=150):
             llm_response += token
-        #print(llm_response)
+        
         if "true" in llm_response.lower():
             return True
         else:

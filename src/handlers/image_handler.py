@@ -26,7 +26,8 @@ flux_lora_models = ["https://civitai.com/api/download/models/746602?type=Model&f
                     "https://civitai.com/api/download/models/1272367?type=Model&format=SafeTensor", #Realistic Anime 1131779
                     "https://civitai.com/api/download/models/1308497?type=Model&format=SafeTensor", #Anime Enchancer 348852
                     "https://civitai.com/api/download/models/728041?type=Model&format=SafeTensor", #Midjorney 650743
-                    "https://civitai.com/api/download/models/756735?type=Model&format=SafeTensor" #Hentai 676019
+                    "https://civitai.com/api/download/models/756735?type=Model&format=SafeTensor", #Hentai 676019
+                    "https://civitai.com/api/download/models/952214?type=Model&format=SafeTensor" #Hentai pvc 851077
 
                    ]
 
@@ -81,7 +82,7 @@ class ImageHandler:
             payload['height'] = 1152
             payload['steps'] = 4
             
-        print(f"Generating image with GetImg API: {payload}")
+        #print(f"Generating image with GetImg API: {payload}")
         try:
             response = requests.post(self.getimg_base_url, headers=headers, json=payload)
             response.raise_for_status()
@@ -217,14 +218,14 @@ class ImageHandler:
         #Flux lora
         if agent_config.image_config.image_model in flux_lora_models:
             agent_config.image_config.image_api_path = "fal-ai/flux-lora"
-            job_details["guidance_scale"] = 2.5
-            job_details["steps"] = 20
+            job_details["guidance_scale"] = 3.5
+            job_details["steps"] = 28
             job_details["loras"] = [
                 {
                     "path": agent_config.image_config.image_model,
-                    "scale": 0.9
+                    "scale": 0.8
                 }]
-        print(f"Submitting Fal.ai job with details: {formatted_job_details}")
+        #print(f"Submitting Fal.ai job with details: {formatted_job_details}")
         if len(prompt) > 10:
             try:
                 response = requests.post(
@@ -319,7 +320,7 @@ class ImageHandler:
     
     Review the last message from user and character and respond with TRUE only if there are:
     - Character suggestion to visual generation and notable visual elements
-    - user interest in appearance and also consent from character
+    - user interest in appearance and clear message from character to provide visual
     
     User: {local_messages[-2]['content']}
     Character: {local_messages[-1]['content']}
@@ -327,7 +328,7 @@ class ImageHandler:
     Additionally, review the user and character's message to determine R-rating, if messages contains clear sexual content and pornography then NC-17 or if unsure then rating is R.
     Format response as a structured JSON:
     {{
-        "reasoning": "Reasoning in one sentence here",
+        "reasoning": "Reasoning in one short sentence here",
         "result": true/false,
         "r-rating": "NC-17,R,None"
     }}""").rstrip()
@@ -394,7 +395,7 @@ class ImageHandler:
                     "subject description with count and gender. e.g. 1female neko",
                     "detailed looks descriptors",
                     "age as number, if missing generate age",
-                    "clothing,named garments,patterns,material,color",
+                    "detailed clothing,named garments,patterns,material,color",
                     "mood",
                     "atmosphere",
                     "environment",
