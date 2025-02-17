@@ -108,7 +108,7 @@ class AgentConfig(BaseConfig):
     character: Optional[Character] = Character()
     enable_image_generation: bool = True
     enable_voice: bool = True
-    enable_cot_prompt:bool = True
+    enable_cot_prompt:bool = False
     update_config: bool = False
     ephemeral: bool = False
     model_config = ConfigDict(arbitrary_types_allowed=True)
