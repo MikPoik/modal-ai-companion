@@ -109,6 +109,19 @@ class ModalAgent:
                 max_tokens=150):
             llm_response += token
         llm_response = llm_response.replace("```json", "").replace("```","").strip()
+        
+        # Try to extract the reasoning directly without requiring JSON format
+        try:
+            # First attempt to parse as JSON
+            result_data = json.loads(llm_response)
+            moderation_result = result_data.get("moderation_result", False)
+            reasoning = result_data.get("reasoning", "No specific reason provided")
+        except json.JSONDecodeError:
+            # If JSON parsing fails, extract directly using a simpler approach
+            moderation_result = "True" in llm_response or "true" in llm_response.lower()
+            reasoning = "Unable to parse detailed reasoning"
+            
+        return moderation_result, reasoning
 
         if "true" in llm_response.lower():
             return True, llm_response
