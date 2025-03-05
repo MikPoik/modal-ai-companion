@@ -15,6 +15,7 @@ httpx = "^0.27.2"
 openai = "1.53.0"
 annoy = "1.17.3"
 pyaml = "24.9.0"
+together = "1.4.1"
 
 [tool.pyright]
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md

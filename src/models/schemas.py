@@ -70,7 +70,7 @@ class LLMConfig(BaseModel):
 
     max_tokens: int = 512
     context_size: int = 64000
-    model: Optional[str] = "Sao10K/L3.3-70B-Euryale-v2.3"
+    model: Optional[str] = "Gryphe/MythoMax-L2-13b"
     reasoning_model: Optional[str] = "mistralai/Mistral-Small-24B-Instruct-2501"
     reasoning_provider: Optional[str] = "deepinfra"
     provider: Optional[str] = "deepinfra"

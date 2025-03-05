@@ -213,3 +213,11 @@ class ChatHandler:
             msg for i, msg in enumerate(messages)
             if msg.get('tag') != 'image' or i == last_image_index
         ]
+
+    def clean_extra_tags(self, messages: List[dict]) -> List[dict]:
+        """Clean the messages to retain only the content field."""
+        cleaned_messages = []
+        for msg in messages:
+            if 'content' in msg:
+                cleaned_messages.append({'content': msg['content']})
+        return cleaned_messages

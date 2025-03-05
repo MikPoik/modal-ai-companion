@@ -13,7 +13,7 @@ from src.gcp_constants import GCP_PUBLIC_IMAGE_BUCKET, GCP_CHAT_BUCKET, gcp_hmac
 import json
 
 agent_image = (modal.Image.debian_slim(python_version="3.10").pip_install(
-    "openai==1.47", "pydantic==2.6.4", "requests", "shortuuid", "annoy").add_local_python_source("src"))
+    "openai==1.47", "pydantic==2.6.4", "requests", "shortuuid", "annoy","together").add_local_python_source("src"))
 
 with agent_image.imports():
     import json
@@ -207,7 +207,8 @@ class ModalAgent:
                 response_ready = False
                 for token in self.llm_handler.generate(messages_to_send,
                                                        agent_config,
-                                                      stop_words=["\n#"]):
+                                                      stop_words=["\n#"]
+                                                      ):
                     if agent_config.enable_cot_prompt and "Gryphe/MythoMax-L2-13b" not in agent_config.llm_config.model:
                         llm_response += token
                         if response_ready:
@@ -226,7 +227,7 @@ class ModalAgent:
                         llm_response += token
                         parsed_response += token
                         yield token
-                #print("LLM Response:\n"+llm_response)
+                print("LLM Response:\n"+llm_response)
                 #print("Parsed response:\n"+parsed_response)
                 if agent_config.enable_cot_prompt and not parsed_response:                    
                     parsed_response = llm_response
