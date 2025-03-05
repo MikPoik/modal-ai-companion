@@ -46,7 +46,8 @@ async def moderate_character(
     print("POST /moderate_input")
     if not check_agent_config(agent_config):
         raise HTTPException(status_code=400, detail="Invalid agent configuration POST /prompt")
-    return modal_agent.moderate_character.remote(agent_config)
+    result, reason = modal_agent.moderate_character.remote(agent_config)
+    return {"moderation_result": result, "reasoning": reason}
     
 @web_app.post("/generate_avatar")
 async def generate_avatar(
