@@ -105,6 +105,7 @@ class ModalAgent:
                 messages,
                 agent_config,
                 temperature=0,
+                min_p=0,                
                 model=agent_config.llm_config.reasoning_model,
                 max_tokens=150):
             llm_response += token

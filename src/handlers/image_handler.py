@@ -355,7 +355,7 @@ class ImageHandler:
         reasoning_response = ""
         for token in self.llm_handler.generate(local_messages,agent_config,
                                                temperature=0.5,                                              
-                                               min_p=0,
+                                               min_p=0.0,
                                                repetition_penalty=1, 
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider,
@@ -439,8 +439,8 @@ class ImageHandler:
         local_messages.append({"role": "user", "content": prompt})
         for token in self.llm_handler.generate(local_messages,
                                                agent_config,
-                                               temperature=0.5,
-                                               min_p=0,
+                                               temperature=1,
+                                               min_p=0.0,
                                                repetition_penalty=1.05,                                               
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider,

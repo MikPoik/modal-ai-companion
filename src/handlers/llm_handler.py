@@ -55,7 +55,8 @@ class LLMHandler:
         if provider and provider in together_ai_models:
             provider = "togetherai"
 
-
+        print(min_p)
+        print(repetition_penalty)
         if provider == 'togetherai' or provider == 'deepinfra':
             extra_body['min_p'] = min_p or agent_config.llm_config.min_p
             extra_body['repetition_penalty'] = repetition_penalty or agent_config.llm_config.repetition_penalty   
