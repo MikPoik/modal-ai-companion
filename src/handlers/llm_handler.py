@@ -104,8 +104,15 @@ class LLMHandler:
             payload['repetition_penalty'] = repetition_penalty if repetition_penalty is not None else agent_config.llm_config.repetition_penalty
             
         self.client = self.initialize_client(provider or agent_config.llm_config.provider)
+        print(self.client)
+        print(payload)
         try:
-            response = self.client.chat.completions.create(**payload)
+            request_payload = payload.copy()
+            if 'proxies' in request_payload:
+                print("Removing 'proxies' parameter as it's not supported by the client")
+                del request_payload['proxies']
+
+            response = self.client.chat.completions.create(**request_payload)
             for chunk in response:
                 if len(chunk.choices) > 0 and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
