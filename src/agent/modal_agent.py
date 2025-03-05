@@ -109,7 +109,7 @@ class ModalAgent:
                 max_tokens=150):
             llm_response += token
         llm_response = llm_response.replace("```json", "").replace("```","").strip()
-        print(llm_response)
+
         if "true" in llm_response.lower():
             return True, llm_response
         else:

@@ -51,8 +51,7 @@ async def moderate_character(
     # Handle the JSON parsing safely
     try:
         # Clean up the string if it contains double braces
-        cleaned_reason = reason.replace('{{', '{').replace('}}', '}')
-        reason_json = json.loads(cleaned_reason)
+        reason_json = json.loads(reason)
         reasoning = reason_json.get("reasoning", None)
     except json.JSONDecodeError as e:
         print(f"JSON decode error: {e}, raw response: {reason}")
