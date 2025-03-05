@@ -104,13 +104,13 @@ class ModalAgent:
         for token in self.llm_handler.generate(
                 messages,
                 agent_config,
-                temperature=0,
-                min_p=0,                
+                temperature=0.01,
+                min_p=0.0001,                
                 model=agent_config.llm_config.reasoning_model,
                 max_tokens=150):
             llm_response += token
         llm_response = llm_response.replace("```json", "").replace("```","").strip()
-        
+        print(llm_response)
         # Try to extract the reasoning directly without requiring JSON format
         try:
             # First attempt to parse as JSON
@@ -206,7 +206,8 @@ class ModalAgent:
                 # Generate response using LLM
                 response_ready = False
                 for token in self.llm_handler.generate(messages_to_send,
-                                                       agent_config):
+                                                       agent_config,
+                                                      stop_words=["\n###"]):
                     if agent_config.enable_cot_prompt and "Gryphe/MythoMax-L2-13b" not in agent_config.llm_config.model:
                         llm_response += token
                         if response_ready:

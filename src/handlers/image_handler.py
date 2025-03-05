@@ -59,7 +59,7 @@ class ImageHandler:
             "scheduler": "dpmsolver++",
             "output_format": agent_config.image_config.image_format
         }
-
+        get_img_sd_models = ["absolute-reality-v1-8-1","realistic-vision-v3","dream-shaper-v8","dark-sushi-mix-v2-25"]
         get_img_sdxl_models = [ "juggernaut-xl-v10","realvis-xl-v4","reproduction-v3-31","real-cartoon-xl-v6","sdvn7-niji-style-xl-v1","counterfeit-xl-v2-5","animagine-xl-v-3-1"]
         get_img_essential_models = ["essential/anime","essential/photorealism","essential/art"]
         
@@ -87,16 +87,22 @@ class ImageHandler:
             payload['steps'] = 4
             
         if payload.get("model") in get_img_essential_models:
-                self.getimg_base_url = "https://api.getimg.ai/v1/essential-v2/text-to-image"
+                self.getimg_base_url = "https://api.getimg.ai/v1/essential/text-to-image"
                 payload['style'] = payload['model'].split("/")[1]
                 payload['aspect_ratio'] = "2:3"
                 payload.pop('scheduler')
                 payload.pop('negative_prompt')
                 payload.pop('model')
-                payload.pop('width')
-                payload.pop('height')
+                payload['width'] = 1024
+                payload['height'] = 1280
                 payload.pop('steps')
                 payload.pop('guidance')
+
+        if payload.get("model") in get_img_sd_models:
+            self.getimg_base_url = "https://api.getimg.ai/v1/stable-diffusion/text-to-image"
+            payload['height'] = 768
+            payload['width'] = 512
+            payload['guidance'] = 5
             
         print(f"Generating image with GetImg API: {payload}")
         try:
