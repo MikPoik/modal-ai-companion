@@ -55,13 +55,11 @@ class LLMHandler:
         if provider and provider in together_ai_models:
             provider = "togetherai"
 
-        print(min_p)
-        print(repetition_penalty)
         if provider == 'togetherai' or provider == 'deepinfra':
             # Use None check instead of logical OR to handle zero values correctly
-            extra_body['min_p'] = 0.1#min_p if min_p is not None else agent_config.llm_config.min_p
+            extra_body['min_p'] = min_p if min_p is not None else agent_config.llm_config.min_p
             extra_body['repetition_penalty'] = repetition_penalty if repetition_penalty is not None else agent_config.llm_config.repetition_penalty
-        print(extra_body)
+        
         self.client = self.initialize_client(provider or agent_config.llm_config.provider)
         try:
             response = self.client.chat.completions.create(

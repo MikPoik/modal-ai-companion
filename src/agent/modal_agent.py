@@ -207,7 +207,7 @@ class ModalAgent:
                 response_ready = False
                 for token in self.llm_handler.generate(messages_to_send,
                                                        agent_config,
-                                                      stop_words=["\n###"]):
+                                                      stop_words=["\n#"]):
                     if agent_config.enable_cot_prompt and "Gryphe/MythoMax-L2-13b" not in agent_config.llm_config.model:
                         llm_response += token
                         if response_ready:
