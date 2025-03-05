@@ -29,29 +29,19 @@ class LLMHandler:
         from openai import OpenAI
         from together import Together
         """Initialize OpenAI client with provider-specific configuration."""
+        print(f"_{provider}_")
+        provider = provider.strip()
         config = self._provider_configs.get(provider, self._provider_configs["openai"])
-        #print("*** LLM CONFIG ***: ",config)
+        print("*** LLM CONFIG ***: ",config)
         if config["api_key_env"] not in os.environ:
             raise ValueError(f"Missing API key for provider {provider}")
         print("Initializing llm client with provider: ", provider)
-        if provider.strip() == "togetherai":
-            return Together(
-                api_key=os.environ[config["api_key_env"]]
-            )
-        elif provider.strip() in ["deepinfra", "openai"]:
-            # Create client options dict, excluding proxies if present
-            client_options = {
-                "base_url": config["base_url"],
-                "api_key": os.environ[config["api_key_env"]]
-            }
-            
-            # Filter out any environment-injected proxy settings
-            if "http_proxy" in os.environ:
-                print("Note: http_proxy environment variable detected but not used")
-            if "https_proxy" in os.environ:
-                print("Note: https_proxy environment variable detected but not used")
-                
-            return OpenAI(**client_options)
+
+        return Together(
+            api_key=os.environ[config["api_key_env"]],
+            base_url=os.environ[config["base_url"]]
+        )
+
 
     def generate(self, 
                 messages: List[Dict], 
@@ -121,18 +111,10 @@ class LLMHandler:
             # Deep debug of payload
             print("Payload keys:", list(payload.keys()))
             
-            # Create a clean copy of the payload
-            request_payload = payload.copy()
+
             
-            # Check for and remove problematic parameters
-            problem_params = ['proxies']
-            for param in problem_params:
-                if param in request_payload:
-                    print(f"Removing '{param}' parameter as it's not supported by the client")
-                    del request_payload[param]
-            
-            print(f"Calling chat.completions.create with provider: {provider_name}, model: {request_payload.get('model', 'unknown')}")
-            response = self.client.chat.completions.create(**request_payload)
+            print(f"Calling chat.completions.create with provider: {provider_name}, model: {payload.get('model', 'unknown')}")
+            response = self.client.chat.completions.create(**payload)
             for chunk in response:
                 if len(chunk.choices) > 0 and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
