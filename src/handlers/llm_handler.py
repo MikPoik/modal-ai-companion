@@ -40,7 +40,7 @@ class LLMHandler:
 
     def generate(self, 
                 messages: List[Dict], 
-                agent_config: AgentConfig,temperature=2.0,model=None,provider=None,stop_words=None,max_tokens=None,frequency_penalty=None,presence_penalty=None,repetition_penalty=None,top_p=0.1,top_k=None,min_p=0.9) -> Generator[str, None, None]:
+                agent_config: AgentConfig,temperature=None,model=None,provider=None,stop_words=None,max_tokens=None,frequency_penalty=None,presence_penalty=None,repetition_penalty=None,top_p=None,top_k=None,min_p=None) -> Generator[str, None, None]:
         """Generate text using the configured LLM provider."""
         if not agent_config.llm_config.provider:
             raise ValueError("LLM provider not specified in config")

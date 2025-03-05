@@ -75,10 +75,10 @@ class LLMConfig(BaseModel):
     reasoning_provider: Optional[str] = "deepinfra"
     provider: Optional[str] = "deepinfra"
     reasoning_temperature: float = 0.3
-    temperature: float = 1.7
+    temperature: float = 2
     openai_temperature: float = 0.7 #openai doesnt support min_p
-    top_p: float = 1
-    min_p: float = 0.05
+    top_p: float = 0.1
+    min_p: float = 0.9
     repetition_penalty: float = 1.05
     frequency_penalty: float = 0
     presence_penalty: float = 0
@@ -93,7 +93,7 @@ class ImageConfig(BaseModel):
     image_width: Optional[int] = 896 
     image_height: Optional[int] = 1152
     num_inference_steps: Optional[int] = 30
-    guidance_scale: Optional[float] = 4
+    guidance_scale: Optional[float] = 3
     scheduler: Optional[str] = "DPM++ 2M SDE"
     clip_skip: Optional[int] = 2
     loras: Optional[List[str]] = []

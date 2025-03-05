@@ -123,10 +123,6 @@ class ModalAgent:
             
         return moderation_result, reasoning
 
-        if "true" in llm_response.lower():
-            return True, llm_response
-        else:
-            return False,""
 
     @modal.method()
     def get_or_create_agent_config(
@@ -209,9 +205,7 @@ class ModalAgent:
                 # Generate response using LLM
                 response_ready = False
                 for token in self.llm_handler.generate(messages_to_send,
-                                                       agent_config,
-                                                       frequency_penalty=0,
-                                                       presence_penalty=0):
+                                                       agent_config):
                     if agent_config.enable_cot_prompt and "Gryphe/MythoMax-L2-13b" not in agent_config.llm_config.model:
                         llm_response += token
                         if response_ready:

@@ -68,7 +68,8 @@ class ImageHandler:
             payload['scheduler'] = 'euler'
             payload['width'] = 896
             payload['height'] = 1152
-            payload['steps'] = 40
+            payload['steps'] = 30
+            payload['guidance'] = 3
 
 
             
@@ -415,7 +416,7 @@ class ImageHandler:
         Format your response as structured JSON with the following string array literals:
         
         {{ 
-        "reasoning": "Provide concise rationale for image composition choices in one brief sentence.",
+        "ImageCaption": "Provide short,detailed and dense concise image caption in words.",
         "ImageDescriptionKeywords": {{ 
             "DetailedSubjectLooks": [ "Precise subject description with count and gender, e.g. 1 female neko",
                                     "Current action or pose",
@@ -440,7 +441,7 @@ class ImageHandler:
                                                agent_config,
                                                temperature=0.5,
                                                min_p=0,
-                                               repetition_penalty=1,                                               
+                                               repetition_penalty=1.05,                                               
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider,
                                                max_tokens=800):
