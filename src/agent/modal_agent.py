@@ -93,7 +93,7 @@ class ModalAgent:
 
         The character will interact with the user. 
         If clear listed prohibited content is found, respond with TRUE; otherwise, respond with FALSE.
-        Return only a JSON with the following fields:
+        Return only a valid JSON object with the following fields, without code fences:
         {{
             "reasoning": "Brief and concise moderation rationale in one sentence",
             "moderation_result": True/False
@@ -108,6 +108,7 @@ class ModalAgent:
                 model=agent_config.llm_config.reasoning_model,
                 max_tokens=150):
             llm_response += token
+        llm_response = llm_response.replace("```json", "").replace("```","").strip()
         print(llm_response)
         if "true" in llm_response.lower():
             return True, llm_response
