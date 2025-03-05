@@ -7,7 +7,6 @@ import os,json
 
 class LLMHandler:
     def __init__(self):
-        from openai import OpenAI
         import os
         self.client = None
         self._provider_configs = {
@@ -26,20 +25,15 @@ class LLMHandler:
         }
 
     def initialize_client(self, provider: str):
-        from openai import OpenAI
         from together import Together
         """Initialize OpenAI client with provider-specific configuration."""
-        print(f"_{provider}_")
         provider = provider.strip()
         config = self._provider_configs.get(provider, self._provider_configs["openai"])
-        print("*** LLM CONFIG ***: ",config)
         if config["api_key_env"] not in os.environ:
             raise ValueError(f"Missing API key for provider {provider}")
-        print("Initializing llm client with provider: ", provider)
-
         return Together(
             api_key=os.environ[config["api_key_env"]],
-            base_url=os.environ[config["base_url"]]
+            base_url=config["base_url"]
         )
 
 
@@ -92,24 +86,20 @@ class LLMHandler:
         }
 
         
-        if provider == 'deepinfra':
+        if provider == 'deepinfra' or provider == 'togetherai':
             # Use None check instead of logical OR to handle zero values correctly
-            extra_body['min_p'] = min_p if min_p is not None else agent_config.llm_config.min_p
-            extra_body['repetition_penalty'] = repetition_penalty if repetition_penalty is not None else agent_config.llm_config.repetition_penalty
-            payload['extra_body'] = extra_body
-            
-        if provider == 'togetherai':
             payload['min_p'] = min_p if min_p is not None else agent_config.llm_config.min_p
             payload['repetition_penalty'] = repetition_penalty if repetition_penalty is not None else agent_config.llm_config.repetition_penalty
             
+
         provider_name = provider or agent_config.llm_config.provider
         print(f"Initializing llm client with provider: {provider_name}")
         try:
             self.client = self.initialize_client(provider_name)
-            print(f"Client initialized: {type(self.client).__name__}")
+            #print(f"Client initialized: {type(self.client).__name__}")
             
             # Deep debug of payload
-            print("Payload keys:", list(payload.keys()))
+            #print("Payload keys:", list(payload.keys()))
             
 
             
