@@ -103,23 +103,41 @@ class LLMHandler:
             payload['min_p'] = min_p if min_p is not None else agent_config.llm_config.min_p
             payload['repetition_penalty'] = repetition_penalty if repetition_penalty is not None else agent_config.llm_config.repetition_penalty
             
-        self.client = self.initialize_client(provider or agent_config.llm_config.provider)
-        print(self.client)
-        print(payload)
+        provider_name = provider or agent_config.llm_config.provider
+        print(f"Initializing llm client with provider: {provider_name}")
         try:
+            self.client = self.initialize_client(provider_name)
+            print(f"Client initialized: {type(self.client).__name__}")
+            
+            # Deep debug of payload
+            print("Payload keys:", list(payload.keys()))
+            
+            # Create a clean copy of the payload
             request_payload = payload.copy()
-            if 'proxies' in request_payload:
-                print("Removing 'proxies' parameter as it's not supported by the client")
-                del request_payload['proxies']
-
+            
+            # Check for and remove problematic parameters
+            problem_params = ['proxies']
+            for param in problem_params:
+                if param in request_payload:
+                    print(f"Removing '{param}' parameter as it's not supported by the client")
+                    del request_payload[param]
+            
+            print(f"Calling chat.completions.create with provider: {provider_name}, model: {request_payload.get('model', 'unknown')}")
             response = self.client.chat.completions.create(**request_payload)
             for chunk in response:
                 if len(chunk.choices) > 0 and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
 
         except Exception as e:
-            print(f"Error during generation: {str(e)}")
-            yield f"Error: {str(e)}"
+            error_message = f"Error in run method: {type(e).__name__}: {str(e)}"
+            print(error_message)
+            
+            # Print stack trace for debugging
+            import traceback
+            print("Stack trace:")
+            traceback.print_exc()
+            
+            yield f"Error: {error_message}"
 
     def _get_provider_config(self, provider: str) -> tuple[str, str]:
         """Get provider configuration (base URL and API key)."""
