@@ -40,22 +40,27 @@ class LLMHandler:
 
     def generate(self, 
                 messages: List[Dict], 
-                agent_config: AgentConfig,temperature=None,model=None,provider=None,stop_words=None,max_tokens=None,frequency_penalty=None,presence_penalty=None,repetition_penalty=None,top_p=None,top_k=None,min_p=None) -> Generator[str, None, None]:
+                agent_config: AgentConfig,temperature=2.0,model=None,provider=None,stop_words=None,max_tokens=None,frequency_penalty=None,presence_penalty=None,repetition_penalty=None,top_p=0.1,top_k=None,min_p=0.9) -> Generator[str, None, None]:
         """Generate text using the configured LLM provider."""
         if not agent_config.llm_config.provider:
             raise ValueError("LLM provider not specified in config")
         
         together_ai_models = ['meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo','NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO','meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo','mistralai/Mixtral-8x22B-Instruct-v0.1','Gryphe/MythoMax-L2-13b']
         
-
+        extra_body = {}
         if agent_config.llm_config.model in together_ai_models:
             provider = "togetherai"
+
             
         if provider and provider in together_ai_models:
             provider = "togetherai"
-            
+
+
+        if provider == 'togetherai' or provider == 'deepinfra':
+            extra_body['min_p'] = min_p or agent_config.llm_config.min_p
+            extra_body['repetition_penalty'] = repetition_penalty or agent_config.llm_config.repetition_penalty   
+        print(extra_body)
         self.client = self.initialize_client(provider or agent_config.llm_config.provider)
-        
         try:
             response = self.client.chat.completions.create(
                 model=model or agent_config.llm_config.model,
@@ -66,7 +71,8 @@ class LLMHandler:
                 stop= stop_words or agent_config.llm_config.stop,
                 frequency_penalty=frequency_penalty or agent_config.llm_config.frequency_penalty,
                 presence_penalty=presence_penalty or agent_config.llm_config.presence_penalty,
-                top_p=top_p or agent_config.llm_config.top_p,                
+                top_p=top_p or agent_config.llm_config.top_p,  
+                extra_body=extra_body
             )
 
             for chunk in response:

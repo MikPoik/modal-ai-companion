@@ -8,12 +8,12 @@ from src.handlers.agent_config_handler import AgentConfigHandler
 from src.handlers.voice_handler import VoiceHandler
 from src.services.file_service import FileService
 from src.services.cache_service import CacheService
-from typing import Generator, Optional, Dict, Union
+from typing import Generator, Optional, Dict, Union,Tuple
 from src.gcp_constants import GCP_PUBLIC_IMAGE_BUCKET, GCP_CHAT_BUCKET, gcp_hmac_secret, GCP_BUCKET_ENDPOINT_URL
 import json
 
 agent_image = (modal.Image.debian_slim(python_version="3.10").pip_install(
-    "openai==1.47", "pydantic==2.6.4", "requests", "shortuuid", "annoy"))
+    "openai==1.47", "pydantic==2.6.4", "requests", "shortuuid", "annoy").add_local_python_source("src"))
 
 with agent_image.imports():
     import json
@@ -30,7 +30,7 @@ with agent_image.imports():
 
 @app.cls(
     timeout=60 * 5,
-    container_idle_timeout=60 * 15,
+    scaledown_window=60 * 15,
     allow_concurrent_inputs=10,
     image=agent_image,
     secrets=[
@@ -41,6 +41,7 @@ with agent_image.imports():
         modal.Secret.from_name("togetherai-api-key"),
         modal.Secret.from_name("getimgai-api-key")
     ],
+    include_source=True,
     volumes={
         "/data":
         volume,
@@ -70,12 +71,12 @@ class ModalAgent:
         self.cache_service = CacheService()
 
     @modal.method()
-    def moderate_character(self, agent_config: PromptConfig) -> bool:
+    def moderate_character(self, agent_config: PromptConfig) -> Tuple[bool,str]:
 
         prompt = textwrap.dedent(
             f"""Check if the following role-play character profile contains following prohibited content:
         - Incest involving only blood relatives (step-relationships are permitted)
-        - Underage subjects 
+        - Underage subjects, e.g. clear age description or statement, excluding video game characters
         - Child abuse
         - Pedophilia
 
@@ -107,11 +108,11 @@ class ModalAgent:
                 model=agent_config.llm_config.reasoning_model,
                 max_tokens=150):
             llm_response += token
-        
+        print(llm_response)
         if "true" in llm_response.lower():
-            return True
+            return True, llm_response
         else:
-            return False
+            return False,""
 
     @modal.method()
     def get_or_create_agent_config(
@@ -166,11 +167,10 @@ class ModalAgent:
             parsed_response = ""
 
             user_prompt = agent_config.prompt
-
             
             if agent_config.enable_cot_prompt and "Gryphe/MythoMax-L2-13b" not in agent_config.llm_config.model:
                 if len(messages_to_history) > 2 and agent_config.character:
-                    user_prompt = f"{agent_config.llm_config.cot_prompt.format(user_prompt=user_prompt)}"
+                    user_prompt = f"{agent_config.llm_config.cot_prompt.format(user_prompt=user_prompt,char_name=agent_config.character.name)}"
             
             messages_to_send.append({
                 "tag": "text",
@@ -196,26 +196,31 @@ class ModalAgent:
                 response_ready = False
                 for token in self.llm_handler.generate(messages_to_send,
                                                        agent_config,
-                                                       frequency_penalty=0.01,
-                                                       presence_penalty=0.01):
+                                                       frequency_penalty=0,
+                                                       presence_penalty=0):
                     if agent_config.enable_cot_prompt and "Gryphe/MythoMax-L2-13b" not in agent_config.llm_config.model:
                         llm_response += token
                         if response_ready:
                             parsed_response += token
                             yield token
-                        if "</think>" in llm_response:
-                            response_ready = True
-                        elif len(llm_response) == 7:
-                            if not llm_response.startswith("<think>"):
+                            
+                        if "</thinking>" in llm_response.lower() and not response_ready:
                                 response_ready = True
+                        elif len(llm_response) > 10 and not response_ready:                            
+                            if not llm_response.lower().startswith("<thinking>"):
+                                #cot prompting failed fallback to normal
+                                response_ready = True
+                                yield llm_response
+                                parsed_response = llm_response
                     else:
                         llm_response += token
                         parsed_response += token
                         yield token
-
-                if agent_config.enable_cot_prompt and not parsed_response:
+                #print("LLM Response:\n"+llm_response)
+                #print("Parsed response:\n"+parsed_response)
+                if agent_config.enable_cot_prompt and not parsed_response:                    
                     parsed_response = llm_response
-
+                    
             messages_to_history.append({
                 "tag": "text",
                 "role": "assistant",
@@ -239,7 +244,8 @@ class ModalAgent:
                     yield f"![voice]({voice_url})"
 
             # Generate image if enabled
-            if agent_config.enable_image_generation:
+            if agent_config.enable_image_generation and len(messages_to_history
+            ) != 2:
                 is_image_request, preallocated_image_name, public_url, explicit = self.image_handler.check_for_image_request(
                     self.chat_handler.remove_multimedia_messages(
                         messages_to_history), agent_config)

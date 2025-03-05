@@ -207,6 +207,7 @@ class ChatHandler:
 
         if last_image_index is not None:
             print(f"Found an image message at index: {last_image_index}")
+            messages[last_image_index]['content'] = "My last image was described as follows: "+messages[last_image_index]['content'].split("[")[1].split("]")[0]
 
         return [
             msg for i, msg in enumerate(messages)

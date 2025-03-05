@@ -20,7 +20,7 @@ image = modal.Image.debian_slim(python_version="3.10").pip_install(
    "fastapi==0.114.0",
     "requests",
    "shortuuid",
-)
+).add_local_python_source("src")
 
 
 # Set up the HTTP bearer scheme
@@ -152,9 +152,10 @@ def check_agent_config(agent_config: Union[AgentConfig, PromptConfig]) -> bool:
 
 @app.function(
     timeout=60 * 5,
-    container_idle_timeout=60 * 15,
+    scaledown_window=60 * 15,
     allow_concurrent_inputs=100,
     image=image,
+    include_source=True,
     secrets=[modal.Secret.from_name("fast-api-secret")],
     volumes={"/data": volume}
 )

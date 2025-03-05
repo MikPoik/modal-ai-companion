@@ -61,6 +61,7 @@ class ImageHandler:
         }
 
         get_img_sdxl_models = [ "juggernaut-xl-v10","realvis-xl-v4","reproduction-v3-31","real-cartoon-xl-v6","sdvn7-niji-style-xl-v1","counterfeit-xl-v2-5","animagine-xl-v-3-1"]
+        get_img_essential_models = ["essential/anime","essential/photorealism","essential/art"]
         
         if payload.get("model") in get_img_sdxl_models:
             self.getimg_base_url = "https://api.getimg.ai/v1/stable-diffusion-xl/text-to-image"
@@ -68,6 +69,8 @@ class ImageHandler:
             payload['width'] = 896
             payload['height'] = 1152
             payload['steps'] = 40
+
+
             
         if payload.get("model") in getimg_anime_style_models:
             payload['negative_prompt'] = agent_config.image_config.anime_negative_prompt
@@ -82,7 +85,19 @@ class ImageHandler:
             payload['height'] = 1152
             payload['steps'] = 4
             
-        #print(f"Generating image with GetImg API: {payload}")
+        if payload.get("model") in get_img_essential_models:
+                self.getimg_base_url = "https://api.getimg.ai/v1/essential-v2/text-to-image"
+                payload['style'] = payload['model'].split("/")[1]
+                payload['aspect_ratio'] = "2:3"
+                payload.pop('scheduler')
+                payload.pop('negative_prompt')
+                payload.pop('model')
+                payload.pop('width')
+                payload.pop('height')
+                payload.pop('steps')
+                payload.pop('guidance')
+            
+        print(f"Generating image with GetImg API: {payload}")
         try:
             response = requests.post(self.getimg_base_url, headers=headers, json=payload)
             response.raise_for_status()
@@ -218,7 +233,7 @@ class ImageHandler:
         #Flux lora
         if agent_config.image_config.image_model in flux_lora_models:
             agent_config.image_config.image_api_path = "fal-ai/flux-lora"
-            job_details["guidance_scale"] = 3.5
+            job_details["guidance_scale"] = 1.8
             job_details["steps"] = 28
             job_details["loras"] = [
                 {
@@ -328,21 +343,25 @@ class ImageHandler:
     Additionally, review the user and character's message to determine R-rating, if messages contains clear sexual content and pornography then NC-17 or if unsure then rating is R.
     Format response as a structured JSON:
     {{
-        "reasoning": "Reasoning in one short sentence here",
+        "reasoning": "Brief reasoning here, in one short sentence",
         "result": true/false,
         "r-rating": "NC-17,R,None"
-    }}""").rstrip()
+    }}
+    ```json:""").rstrip()
         #print(prompt)
         local_messages.append({"role": "user", "content": prompt})    
     
         reasoning_response = ""
         for token in self.llm_handler.generate(local_messages,agent_config,
-                                               temperature=0.2,
+                                               temperature=0.5,                                              
+                                               min_p=0,
+                                               repetition_penalty=1, 
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider,
                                                max_tokens=200
                                               ):
             reasoning_response += token
+        reasoning_response = reasoning_response.replace('```json','').replace('```','').strip()
         #print(f"Reasoning response: {reasoning_response}")
         explicit = False
         try:
@@ -358,7 +377,13 @@ class ImageHandler:
 
         result_status = json_data.get("result", False)
         if result_status:
-            preallocated_name, public_url = self.file_service.generate_preallocated_url(agent_config, "images")
+            image_tier=""
+            if "civit_ai" in agent_config.image_config.image_model:
+                #More expensive image models
+                image_tier= "_tier_2"
+            if "essential" in agent_config.image_config.image_model:
+                image_tier= "_tier_3"
+            preallocated_name, public_url = self.file_service.generate_preallocated_url(agent_config, "images",extra_id=image_tier)
             return True, preallocated_name, public_url, explicit
         return False, "", "", False
     
@@ -379,51 +404,49 @@ class ImageHandler:
     
         local_messages = messages.copy()
         local_messages = self.update_appearance_from_image_message(local_messages,agent_config)
-        sfw_prompt =  " Ensure the image description does not contain explicit nsfw keywords or nudity."
+        sfw_prompt =  " Ensure the image description does not contain nudity."
         if explicit:
             sfw_prompt= ""
             
         prompt = textwrap.dedent(f"""
-        <Instruction>
-        Analyze the current scene and character appearance to generate a updated detailed visual description optimized for image generation, making sure description is up to date to the latest message.
-
-        Format your response as a structured JSON with the following string array literals:
-
-        {{
-            "ImageDescriptionKeywords": {{
-            "Detailed Subject Looks": [
-                    "subject description with count and gender. e.g. 1female neko",
-                    "detailed looks descriptors",
-                    "age as number, if missing generate age",
-                    "detailed clothing,named garments,patterns,material,color",
-                    "mood",
-                    "atmosphere",
-                    "environment",
-                    "style (e.g. photographic, realistic, if anime character then anime,absurdes)",
-                    "style execution (e.g. self shot, depth of field, high resolution,highly detailed)"
-                    ]
-
+        Instruction
+        Analyze the current scene and character appearance to generate an updated, detailed visual description optimized for image generation, ensuring the description reflects the most recent message.
+        
+        Format your response as structured JSON with the following string array literals:
+        
+        {{ 
+        "reasoning": "Provide concise rationale for image composition choices in one brief sentence.",
+        "ImageDescriptionKeywords": {{ 
+            "DetailedSubjectLooks": [ "Precise subject description with count and gender, e.g. 1 female neko",
+                                    "Current action or pose",
+                                    "Highly detailed look descriptors",
+                                    "Specific age as number; if unspecified, generate appropriate age",
+                                    "Comprehensive clothing details: named garments, patterns, materials, colors",
+                                    "Mood and emotional state",
+                                    "Atmosphere and ambiance",
+                                    "Environment and setting",
+                                    "Art style e.g. photographic, realistic; for anime character, specify anime, absurd",
+                                    "Execution style e.g. self-shot, depth of field, high resolution, intricate detail" 
+                                    ] 
             }}
         }}
-
-        Keep descriptions precise and visually focused, using specific keywords that translate well to image generation.
-        Track all appearance changes from previous interactions, omit removed details e.g. clothes and add new details.
-        Maintain consistency with established character traits.
-        Use high-density visual descriptors for maximum detail.
-        Match the descriptors to the align with last message context: {local_messages[-1]['content']}
-        Keep it short and consise and avoid repeating descriptions.{sfw_prompt}""").rstrip()
+        
+        Focus on precise, visually-oriented keywords that effectively translate to image generation. Incorporate all appearance changes from prior interactions, omitting removed elements like garments and including new details. Preserve consistency with established character traits throughout. Employ high-density, evocative visual descriptors for maximum vivid detail. Align descriptors with the immediate context of the latest message: {local_messages[-1]['content']} Keep the description brief, concise and information-dense.
+        ```json:""").rstrip()
 
         image_description_response = ""
         local_messages.append({"role": "user", "content": prompt})
         for token in self.llm_handler.generate(local_messages,
                                                agent_config,
-                                               temperature=0.2,
+                                               temperature=0.5,
+                                               min_p=0,
+                                               repetition_penalty=1,                                               
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider,
                                                max_tokens=800):
             image_description_response += token
-
-        #print(f"Image description response: {image_description_response}")
+        image_description_response = image_description_response.replace('```json','').replace('```','').strip()
+        print(f"Image description response: {image_description_response}")
         cleaned_response = image_description_response.replace("```json", "").replace("```", "").strip()
         json_data = json.loads(cleaned_response)
         image_prompt_list = self.parse_appearance(json_data)
