@@ -39,10 +39,19 @@ class LLMHandler:
                 api_key=os.environ[config["api_key_env"]]
             )
         elif provider.strip() in ["deepinfra", "openai"]:
-            return OpenAI(
-                base_url=config["base_url"],
-                api_key=os.environ[config["api_key_env"]]
-            )
+            # Create client options dict, excluding proxies if present
+            client_options = {
+                "base_url": config["base_url"],
+                "api_key": os.environ[config["api_key_env"]]
+            }
+            
+            # Filter out any environment-injected proxy settings
+            if "http_proxy" in os.environ:
+                print("Note: http_proxy environment variable detected but not used")
+            if "https_proxy" in os.environ:
+                print("Note: https_proxy environment variable detected but not used")
+                
+            return OpenAI(**client_options)
 
     def generate(self, 
                 messages: List[Dict], 
