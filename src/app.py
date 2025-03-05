@@ -47,9 +47,18 @@ async def moderate_character(
     if not check_agent_config(agent_config):
         raise HTTPException(status_code=400, detail="Invalid agent configuration POST /prompt")
     result, reason = modal_agent.moderate_character.remote(agent_config)
-    reason_json = json.loads(reason)
-    print(reason_json)
-    reasoning = reason_json.get("reasoning", None)
+    
+    # Handle the JSON parsing safely
+    try:
+        # Clean up the string if it contains double braces
+        cleaned_reason = reason.replace('{{', '{').replace('}}', '}')
+        reason_json = json.loads(cleaned_reason)
+        reasoning = reason_json.get("reasoning", None)
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}, raw response: {reason}")
+        # Fallback to returning the raw reason string
+        reasoning = reason
+        
     return {"moderation_result": result, "reasoning": reasoning}
     
 @web_app.post("/generate_avatar")
