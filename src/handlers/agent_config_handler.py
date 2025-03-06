@@ -97,14 +97,16 @@ class AgentConfigHandler:
                 return existing_config
                 
         # Create embedding index if background text exists and is long enough
-        if (agent_config.character and 
-            agent_config.character.backstory and 
-            len(agent_config.character.backstory) > 10000):
-            print("Creating embedding index for background text")
-            success = self.index_handler.create_and_save_index(
-                agent_config.character.backstory,
-                agent_config,
-            )
+        if agent_config.character:
+            # Check if character is a dictionary or an object
+            backstory = agent_config.character.get('backstory') if isinstance(agent_config.character, dict) else agent_config.character.backstory
+            
+            if backstory and len(backstory) > 10000:
+                print("Creating embedding index for background text")
+                success = self.index_handler.create_and_save_index(
+                    backstory,
+                    agent_config,
+                )
 
         print("Saving config to cache and file")        
         # Save to both cache and file
