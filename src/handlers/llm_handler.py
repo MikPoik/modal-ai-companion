@@ -38,19 +38,19 @@ class LLMHandler:
 
 
     def generate(self, 
-                messages: List[Dict], 
+                messages: List[Dict],
                 agent_config: AgentConfig,
-                 temperature=None,
-                 model=None,
-                 provider=None,
-                 stop_words=None,
-                 max_tokens=None,
-                 frequency_penalty=None,
-                 presence_penalty=None,
-                 repetition_penalty=None,
-                 top_p=None,
-                 top_k=None,
-                 min_p=None) -> Generator[str, None, None]:
+                temperature: float = None,
+                model: str = "",
+                provider: str = "",
+                stop_words: List[str] = None,
+                max_tokens: int = None,
+                frequency_penalty: float = None,
+                presence_penalty: float = None,
+                repetition_penalty: float = None,
+                top_p: float = None,
+                top_k: int = None,
+                min_p: float = None) -> Generator[str, None, None]:
         """Generate text using the configured LLM provider."""
         if not agent_config.llm_config.provider:
             raise ValueError("LLM provider not specified in config")
@@ -72,7 +72,7 @@ class LLMHandler:
         for msg in messages:
             if 'content' in msg:
                 cleaned_messages.append({'role': msg['role'] ,'content': msg['content']})
-
+        print(f"temp {temperature}")
         payload = {
             "model": model or agent_config.llm_config.model,
             "messages": cleaned_messages,
@@ -91,9 +91,12 @@ class LLMHandler:
             payload['min_p'] = min_p if min_p is not None else agent_config.llm_config.min_p
             payload['repetition_penalty'] = repetition_penalty if repetition_penalty is not None else agent_config.llm_config.repetition_penalty
             
-
+        print(f"Temp {payload.get('temperature')}")
+        print(f"Top_p {payload.get('top_p')}")
+        print(f"Min_p {payload.get('min_p')}")
+        print(f"Rep pen {payload.get('repetition_penalty')}")
         provider_name = provider or agent_config.llm_config.provider
-        print(f"Initializing llm client with provider: {provider_name}")
+        #print(f"Initializing llm client with provider: {provider_name}")
         try:
             self.client = self.initialize_client(provider_name)
             #print(f"Client initialized: {type(self.client).__name__}")

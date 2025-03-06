@@ -13,11 +13,11 @@ class IndexHandler:
         self.file_service = FileService('/data')
 
     def initialize_embedding_api(self, agent_config: AgentConfig):
-        from openai import OpenAI
+        from together import Together
         import os
 
         if self.embedding_api is None:
-            self.embedding_api = OpenAI(
+            self.embedding_api = Together(
                 base_url="https://api.deepinfra.com/v1/openai",
                 api_key=os.environ["DEEP_INFRA_API_KEY"]
             )

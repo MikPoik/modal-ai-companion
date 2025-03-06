@@ -41,7 +41,6 @@ class LLMConfig(BaseModel):
     Personality: {char_personality}
     Appearance: {char_appearance}
     Backstory: {char_backstory}
-    Dialogue style sample: {char_seed}
 
     Bring scenes to life using *show, don't tell* techniques where fitting. e.g. *He/She describing action*
     Fully inhabit {char_name}'s unique personality and perspective without ever breaking character or revealing your AI nature.
@@ -75,11 +74,11 @@ class LLMConfig(BaseModel):
     reasoning_provider: Optional[str] = "deepinfra"
     provider: Optional[str] = "deepinfra"
     reasoning_temperature: float = 0.3
-    temperature: float = 2
+    temperature: float = 1
     openai_temperature: float = 0.7 #openai doesnt support min_p
-    top_p: float = 0.1
-    min_p: float = 0.9
-    repetition_penalty: float = 1.05
+    top_p: float = 0.95
+    min_p: float = 0.05
+    repetition_penalty: float = 1.15
     frequency_penalty: float = 0
     presence_penalty: float = 0
     stop: Optional[List[str]] = None

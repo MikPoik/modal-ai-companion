@@ -206,7 +206,11 @@ class ModalAgent:
                 response_ready = False
                 for token in self.llm_handler.generate(messages_to_send,
                                                        agent_config,
-                                                      stop_words=["\n#"]
+                                                      stop_words=["\n##","\n#"],
+                                                       temperature=1.0,
+                                                       top_p=0.9,
+                                                       min_p=0.1,
+                                                       repetition_penalty=1.10
                                                       ):
                     if agent_config.enable_cot_prompt and "Gryphe/MythoMax-L2-13b" not in agent_config.llm_config.model:
                         llm_response += token
@@ -255,7 +259,7 @@ class ModalAgent:
 
             # Generate image if enabled
             if agent_config.enable_image_generation and len(messages_to_history
-            ) != 2:
+            ) != 3:
                 is_image_request, preallocated_image_name, public_url, explicit = self.image_handler.check_for_image_request(
                     self.chat_handler.remove_multimedia_messages(
                         messages_to_history), agent_config)

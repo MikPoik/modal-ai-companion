@@ -314,25 +314,15 @@ class ImageHandler:
     Analyze if the last user and character message warrants visual generation based on these criteria:
     
     1. Visual Changes:
-       - Outfit changes or significant wardrobe adjustments
-       - Physical transformations or appearance changes
        - Clear showing/revealing actions ("shows", "reveals", "displays")
-       - Dramatic poses or intentional presentation
 
     2. Character Actions:
        - Intentional display or presentation
        - Taking photos or selfies
-       - Meaningful changes in expression or pose
-       - Dramatic or theatrical actions
     AND
     
     3. User Requests/Interest:
        - Direct requests ("show me", "send a picture")
-       - Suggestive requests ("I wonder what you look like right now")
-       - Implied interest ("You must look beautiful in that")
-       - Questions about appearance or attire
-    
-
     
     Do NOT trigger for:
     - Casual gestures or minor movements
@@ -341,18 +331,16 @@ class ImageHandler:
     - Subtle mood changes
     
     Review the last message from user and character and respond with TRUE only if there are:
-    - Character suggestion to visual generation and notable visual elements
-    - user interest in appearance and clear message from character to provide visual
+    - user request to show and clear message from character to provide visual
+    - If character said "sends selfie/picture" its always TRUE
     
     User: {local_messages[-2]['content']}
     Character: {local_messages[-1]['content']}
     
-    Additionally, review the user and character's message to determine R-rating, if messages contains clear sexual content and pornography then NC-17 or if unsure then rating is R.
     Format response as a structured JSON:
     {{
         "reasoning": "Brief reasoning here, in one short sentence",
         "result": true/false,
-        "r-rating": "NC-17,R,None"
     }}
     ```json:""").rstrip()
         #print(prompt)
@@ -369,18 +357,14 @@ class ImageHandler:
                                               ):
             reasoning_response += token
         reasoning_response = reasoning_response.replace('```json','').replace('```','').strip()
-        #print(f"Reasoning response: {reasoning_response}")
+        print(f"Reasoning response: {reasoning_response}")
         explicit = False
         try:
             json_data = json.loads(reasoning_response.strip())
         except json.JSONDecodeError as e:
             print(f"Error decoding JSON response: {str(e)}")
             
-        json_data = json.loads(reasoning_response)
-        nudity_status = json_data.get("r-rating", "R").lower()
-        
-        if "nc-17" in nudity_status.lower():
-            explicit = True
+        json_data = json.loads(reasoning_response.strip())
 
         result_status = json_data.get("result", False)
         if result_status:
@@ -416,19 +400,18 @@ class ImageHandler:
             sfw_prompt= ""
             
         prompt = textwrap.dedent(f"""
-        Instruction
+        Instruction:
         Analyze the current scene and character appearance to generate an updated, detailed visual description optimized for image generation, ensuring the description reflects the most recent message.
         
-        Format your response as structured JSON with the following string array literals:
-        
+        Format your response as structured JSON with the following unique string array literals, don't repeat words between ImageCaption and ImageDescriptionKeywords:        
         {{ 
         "ImageCaption": "Provide short,detailed and dense concise image caption in words.",
         "ImageDescriptionKeywords": {{ 
             "DetailedSubjectLooks": [ "Precise subject description with count and gender, e.g. 1 female neko",
                                     "Current action or pose",
-                                    "Highly detailed look descriptors",
+                                    "Highly detailed look descriptors, hair color, features",
                                     "Specific age as number; if unspecified, generate appropriate age",
-                                    "Comprehensive clothing details: named garments, patterns, materials, colors",
+                                    "Comprehensive clothing details like named garments, material,patterns, materials, colors",
                                     "Mood and emotional state",
                                     "Atmosphere and ambiance",
                                     "Environment and setting",
@@ -438,7 +421,7 @@ class ImageHandler:
             }}
         }}
         
-        Focus on precise, visually-oriented keywords that effectively translate to image generation. Incorporate all appearance changes from prior interactions, omitting removed elements like garments and including new details. Preserve consistency with established character traits throughout. Employ high-density, evocative visual descriptors for maximum vivid detail. Align descriptors with the immediate context of the latest message: {local_messages[-1]['content']} Keep the description brief, concise and information-dense.
+        Focus on precise, visually-oriented keywords that effectively translate to image generation. Incorporate appearance from prior interactions, omitting removed elements like clothes and including new details. Preserve consistency with established character traits throughout. Employ high-density, evocative visual descriptors for maximum vivid detail. Align descriptors with the immediate context of the latest message: {local_messages[-1]['content']} Keep the description brief, concise and information-dense.
         ```json:""").rstrip()
 
         image_description_response = ""
