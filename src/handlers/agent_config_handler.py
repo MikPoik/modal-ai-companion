@@ -14,6 +14,7 @@ class AgentConfigHandler:
     def get_or_create_config(self, agent_config: Union[AgentConfig, PromptConfig], update_config: bool = False) -> Union[AgentConfig, PromptConfig]:
         """
         Get existing config or create new one if it doesn't exist
+        When update_config is True, completely recreate the config with new schema defaults
         """
 
         if not agent_config:
@@ -22,8 +23,57 @@ class AgentConfigHandler:
                 print(f"No workspace ID provided, create defaults")
             agent_config = AgentConfig()
 
-        # Try to get from Modal Dict cache
-        if not update_config:
+        # If update_config is True, we'll use the new defaults from schemas
+        # and only keep essential identifiers from the existing config
+        if update_config:
+            print("Recreating config with new schema defaults")
+            
+            # Get existing config just to preserve IDs
+            existing_config = None
+            cached_config = self.cache_service.get(agent_config.workspace_id, agent_config.agent_id)
+            if cached_config:
+                existing_config = cached_config
+                
+            if not existing_config:
+                config_path = f"{agent_config.agent_id}_config.json"
+                existing_data = self.file_service.load_json(
+                    agent_config.workspace_id,
+                    config_path
+                )
+                if existing_data:
+                    existing_config = AgentConfig(**existing_data)
+            
+            if existing_config:
+                # Create a new config with schema defaults
+                if isinstance(agent_config, PromptConfig):
+                    # For PromptConfig, preserve the prompt from the incoming config
+                    prompt = agent_config.prompt
+                    # Start with a fresh config with schema defaults
+                    new_config = PromptConfig(
+                        workspace_id=agent_config.workspace_id, 
+                        agent_id=agent_config.agent_id,
+                        context_id=agent_config.context_id,
+                        prompt=prompt
+                    )
+                else:
+                    # For regular AgentConfig, just start fresh with schema defaults
+                    new_config = AgentConfig(
+                        workspace_id=agent_config.workspace_id, 
+                        agent_id=agent_config.agent_id,
+                        context_id=agent_config.context_id
+                    )
+                
+                # Override with any explicit non-None values from the incoming config
+                for field, value in agent_config.model_dump().items():
+                    if value is not None and field not in ['workspace_id', 'agent_id', 'context_id']:
+                        setattr(new_config, field, value)
+                
+                # Use the new config with schema defaults
+                agent_config = new_config
+                
+            # Now continue with saving the new config
+        else:
+            # Try to get from Modal Dict cache
             cached_config = self.cache_service.get(agent_config.workspace_id, agent_config.agent_id)
             if cached_config:
                 print("Returning cached config")
@@ -34,9 +84,8 @@ class AgentConfigHandler:
                     return PromptConfig(**base_dict, prompt=agent_config.prompt)
                 return cached_config
                 
-        # Try to get from file cache
-        config_path = f"{agent_config.agent_id}_config.json"
-        if not update_config:
+            # Try to get from file cache
+            config_path = f"{agent_config.agent_id}_config.json"
             existing_config = self.file_service.load_json(
                 agent_config.workspace_id,
                 config_path
