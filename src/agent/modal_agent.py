@@ -255,8 +255,8 @@ class ModalAgent:
                     yield f"![voice]({voice_url})"
 
             # Generate image if enabled
-            if agent_config.enable_image_generation and len(messages_to_history
-            ) != 3:
+            if agent_config.enable_image_generation and len(messages_to_send
+            ) != 1:
                 is_image_request, preallocated_image_name, public_url, explicit = self.image_handler.check_for_image_request(
                     self.chat_handler.remove_multimedia_messages(
                         messages_to_history), agent_config)

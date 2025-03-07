@@ -357,7 +357,7 @@ class ImageHandler:
                                               ):
             reasoning_response += token
         reasoning_response = reasoning_response.replace('```json','').replace('```','').strip()
-        print(f"Reasoning response: {reasoning_response}")
+        #print(f"Reasoning response: {reasoning_response}")
         explicit = False
         try:
             json_data = json.loads(reasoning_response.strip())
@@ -436,7 +436,7 @@ class ImageHandler:
                                                max_tokens=800):
             image_description_response += token
         image_description_response = image_description_response.replace('```json','').replace('```','').strip()
-        print(f"Image description response: {image_description_response}")
+        #print(f"Image description response: {image_description_response}")
         cleaned_response = image_description_response.replace("```json", "").replace("```", "").strip()
         json_data = json.loads(cleaned_response)
         image_prompt_list = self.parse_appearance(json_data)
