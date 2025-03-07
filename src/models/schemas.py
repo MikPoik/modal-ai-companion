@@ -12,9 +12,9 @@ def generate_uuid():
 class Character(BaseModel):
     name: Optional[str] = ""
     description: Optional[str] = ""
-    appearance: Optional[str] = ""
+    appearance: Optional[str] = "N/A"
     personality: Optional[str] = ""
-    backstory: Optional[str] = ""
+    backstory: Optional[str] = "N/A"
     tags: Optional[str] = "drama"
     seed_message: Optional[str] = ""
 
@@ -28,7 +28,7 @@ class BaseConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     system_prompt: Optional[str] = textwrap.dedent("""\
-    Enter role-play mode as {char_name}. You are now embodying {char_name} in an immersive roleplay with the User.
+    Enter role-play mode. You are now embodying {char_name} in an immersive roleplay with the User.
     Engage in dramatic, memorable interactions that bring {char_name} to life.
     Be evocative and expressive in your descriptions when it enhances the scene.
     Utilize the latest insights from psychiatry and psychology to portray {char_name} with authenticity and realism.
@@ -41,10 +41,12 @@ class LLMConfig(BaseModel):
     Personality: {char_personality}
     Appearance: {char_appearance}
     Backstory: {char_backstory}
+    Dialogue style example: {char_seed}
 
     Bring scenes to life using *show, don't tell* techniques where fitting. e.g. *He/She describing action*
     Fully inhabit {char_name}'s unique personality and perspective without ever breaking character or revealing your AI nature.
-    Write fresh and unique responses, avoiding repetitive phrases and figures of speech."""
+    Write fresh and unique responses, avoiding repetitive phrases and figures of speech.
+    Keep advancing the plot at realistic pace and let User drive the narrative."""
                                                    ).rstrip()
 
     cot_prompt: Optional[str] = textwrap.dedent("""\
@@ -73,12 +75,12 @@ class LLMConfig(BaseModel):
     reasoning_model: Optional[str] = "mistralai/Mistral-Small-24B-Instruct-2501"
     reasoning_provider: Optional[str] = "deepinfra"
     provider: Optional[str] = "deepinfra"
-    reasoning_temperature: float = 0.3
+    reasoning_temperature: float = 0.4
     temperature: float = 1
     openai_temperature: float = 0.7 #openai doesnt support min_p
-    top_p: float = 0.95
-    min_p: float = 0.05
-    repetition_penalty: float = 1.15
+    top_p: float = 1
+    min_p: float = 0.1
+    repetition_penalty: float = 1.07
     frequency_penalty: float = 0
     presence_penalty: float = 0
     stop: Optional[List[str]] = None

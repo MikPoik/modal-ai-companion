@@ -72,7 +72,7 @@ class LLMHandler:
         for msg in messages:
             if 'content' in msg:
                 cleaned_messages.append({'role': msg['role'] ,'content': msg['content']})
-        print(f"temp {temperature}")
+
         payload = {
             "model": model or agent_config.llm_config.model,
             "messages": cleaned_messages,
@@ -91,22 +91,16 @@ class LLMHandler:
             payload['min_p'] = min_p if min_p is not None else agent_config.llm_config.min_p
             payload['repetition_penalty'] = repetition_penalty if repetition_penalty is not None else agent_config.llm_config.repetition_penalty
             
-        print(f"Temp {payload.get('temperature')}")
-        print(f"Top_p {payload.get('top_p')}")
-        print(f"Min_p {payload.get('min_p')}")
-        print(f"Rep pen {payload.get('repetition_penalty')}")
         provider_name = provider or agent_config.llm_config.provider
-        #print(f"Initializing llm client with provider: {provider_name}")
+        #print(f"Calling chat.completions.create with provider: {provider_name}, model: {payload.get('model', 'unknown')}")
+
         try:
             self.client = self.initialize_client(provider_name)
             #print(f"Client initialized: {type(self.client).__name__}")
             
             # Deep debug of payload
             #print("Payload keys:", list(payload.keys()))
-            
 
-            
-            print(f"Calling chat.completions.create with provider: {provider_name}, model: {payload.get('model', 'unknown')}")
             response = self.client.chat.completions.create(**payload)
             for chunk in response:
                 if len(chunk.choices) > 0 and chunk.choices[0].delta.content:

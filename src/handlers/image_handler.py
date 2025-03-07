@@ -104,7 +104,7 @@ class ImageHandler:
             payload['width'] = 512
             payload['guidance'] = 5
             
-        print(f"Generating image with GetImg API: {payload}")
+        #print(f"Generating image with GetImg API: {payload}")
         try:
             response = requests.post(self.getimg_base_url, headers=headers, json=payload)
             response.raise_for_status()
@@ -348,7 +348,7 @@ class ImageHandler:
     
         reasoning_response = ""
         for token in self.llm_handler.generate(local_messages,agent_config,
-                                               temperature=0.5,                                              
+                                               temperature=agent_config.llm_config.reasoning_temperature,                                              
                                                min_p=0.0,
                                                repetition_penalty=1, 
                                                model=agent_config.llm_config.reasoning_model,
@@ -405,13 +405,13 @@ class ImageHandler:
         
         Format your response as structured JSON with the following unique string array literals, don't repeat words between ImageCaption and ImageDescriptionKeywords:        
         {{ 
-        "ImageCaption": "Provide short,detailed and dense concise image caption in words.",
+        "ImageCaption": "Provide short,detailed and dense concise image caption, up to 10 words.",
         "ImageDescriptionKeywords": {{ 
             "DetailedSubjectLooks": [ "Precise subject description with count and gender, e.g. 1 female neko",
                                     "Current action or pose",
                                     "Highly detailed look descriptors, hair color, features",
                                     "Specific age as number; if unspecified, generate appropriate age",
-                                    "Comprehensive clothing details like named garments, material,patterns, materials, colors",
+                                    "Comprehensive current clothing (if any) details like named garments, material,patterns, materials, colors",
                                     "Mood and emotional state",
                                     "Atmosphere and ambiance",
                                     "Environment and setting",
@@ -428,8 +428,8 @@ class ImageHandler:
         local_messages.append({"role": "user", "content": prompt})
         for token in self.llm_handler.generate(local_messages,
                                                agent_config,
-                                               temperature=1,
-                                               min_p=0.0,
+                                               temperature=0.4,
+                                               min_p=0.01,
                                                repetition_penalty=1.05,                                               
                                                model=agent_config.llm_config.reasoning_model,
                                                provider=agent_config.llm_config.reasoning_provider,

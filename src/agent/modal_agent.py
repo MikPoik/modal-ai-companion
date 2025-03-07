@@ -163,36 +163,42 @@ class ModalAgent:
                 agent_config.prompt,  # Pass the prompt string
                 agent_config  # Pass the AgentConfig object, not chat history
             )
-            #print(messages)
             messages_to_send = []
+            print(len(messages_to_history))
+            print(messages_to_history)
+            if len(messages_to_history) > 2:
+                print("Length is greater than 3")
+                #print(messages)
 
-            # First handle multimedia filtering if needed
-            if agent_config.enable_image_generation or agent_config.enable_voice:
-                messages_to_send = self.chat_handler.remove_multimedia_messages(
-                    messages_to_history)
-            else:
-                messages_to_send = messages_to_history.copy()
+    
+                # First handle multimedia filtering if needed
+                if agent_config.enable_image_generation or agent_config.enable_voice:
+                    messages_to_send = self.chat_handler.remove_multimedia_messages(
+                        messages_to_history)
+                else:
+                    messages_to_send = messages_to_history.copy()
+    
+                llm_response = ""
+                parsed_response = ""
+    
+                user_prompt = agent_config.prompt
+                
+                if agent_config.enable_cot_prompt and "Gryphe/MythoMax-L2-13b" not in agent_config.llm_config.model:
+                    if len(messages_to_history) > 2 and agent_config.character:
+                        user_prompt = f"{agent_config.llm_config.cot_prompt.format(user_prompt=user_prompt,char_name=agent_config.character.name)}"
+    
 
-            llm_response = ""
-            parsed_response = ""
-
-            user_prompt = agent_config.prompt
-            
-            if agent_config.enable_cot_prompt and "Gryphe/MythoMax-L2-13b" not in agent_config.llm_config.model:
-                if len(messages_to_history) > 2 and agent_config.character:
-                    user_prompt = f"{agent_config.llm_config.cot_prompt.format(user_prompt=user_prompt,char_name=agent_config.character.name)}"
-            
-            messages_to_send.append({
-                "tag": "text",
-                "role": "user",
-                "content": user_prompt
-            })
-
-            messages_to_history.append({
-                "tag": "text",
-                "role": "user",
-                "content": agent_config.prompt  #raw prompt
-            })
+                messages_to_send.append({
+                    "tag": "text",
+                    "role": "user",
+                    "content": user_prompt
+                })
+    
+                messages_to_history.append({
+                    "tag": "text",
+                    "role": "user",
+                    "content": agent_config.prompt  #raw prompt
+                })
 
             #If seed not sent yet, send seedphrase instead of generation.
             if len(
