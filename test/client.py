@@ -67,7 +67,7 @@ async def init_character(client: httpx.AsyncClient, character_yaml: str):
 async def main():
     async with httpx.AsyncClient() as client:
         # Initialize with character from YAML
-        await init_character(client, "test/characters/velvet.yaml")
+        await init_character(client, "test/characters/ashley.yaml")
 
         # Initial scene setup with structured prompt
         initial_prompt = """Now let's role-play, write character's next response"""
