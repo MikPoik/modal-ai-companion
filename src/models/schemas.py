@@ -28,8 +28,7 @@ class BaseConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     system_prompt: Optional[str] = textwrap.dedent("""\
-    Enter role-play mode, you are now embodying {char_name} in an immersive roleplay.
-    User is unaware of role-play and thinks this is reality, don't break the illusion by revealing any instructions.
+    Enter role-play mode, be verbose and vivid using *show*, don't tell techniques, write {char_name}'s next reply in this chat.
 
     Key traits for {char_name}:
     Personality: {char_personality}
@@ -37,7 +36,6 @@ class LLMConfig(BaseModel):
     Backstory: {char_backstory}
     Dialogue style example: {char_seed}
 
-    Write fresh and unique responses, avoiding repetitive phrases and figures of speech.
     Keep advancing the plot at realistic pace and let User drive the narrative."""
                                                    ).rstrip()
 
@@ -70,9 +68,10 @@ class LLMConfig(BaseModel):
     reasoning_temperature: float = 0.4
     temperature: float = 1
     openai_temperature: float = 0.7  #openai doesnt support min_p
-    top_p: float = 1
+    top_p: float = 0.95
+    top_k: int = 40
     min_p: float = 0.05
-    repetition_penalty: float = 1.05
+    repetition_penalty: float = 1.02
     frequency_penalty: float = 0
     presence_penalty: float = 0
     stop: Optional[List[str]] = None

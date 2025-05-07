@@ -90,6 +90,7 @@ class LLMHandler:
             # Use None check instead of logical OR to handle zero values correctly
             payload['min_p'] = min_p if min_p is not None else agent_config.llm_config.min_p
             payload['repetition_penalty'] = repetition_penalty if repetition_penalty is not None else agent_config.llm_config.repetition_penalty
+            payload['top_k'] = top_k if top_k is not None else agent_config.llm_config.top_k
             
         provider_name = provider or agent_config.llm_config.provider
         #print(f"Calling chat.completions.create with provider: {provider_name}, model: {payload.get('model', 'unknown')}")
