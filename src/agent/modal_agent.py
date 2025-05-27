@@ -109,7 +109,7 @@ class ModalAgent:
                 max_tokens=150):
             llm_response += token
         llm_response = llm_response.replace("```json", "").replace("```","").strip()
-        print(llm_response)
+        #print(llm_response)
         # Try to extract the reasoning directly without requiring JSON format
         try:
             # First attempt to parse as JSON

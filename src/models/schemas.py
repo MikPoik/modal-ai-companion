@@ -28,7 +28,7 @@ class BaseConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     system_prompt: Optional[str] = textwrap.dedent("""\
-    Enter role-play mode, be verbose and vivid using *show*, don't tell techniques, write {char_name}'s next reply in this chat.
+    Enter role-play mode, write {char_name}'s next reply to user.
 
     Key traits for {char_name}:
     Personality: {char_personality}
